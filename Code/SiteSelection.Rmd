@@ -1,0 +1,336 @@
+---
+title: "Site selection for postfire aspen project"
+author: "Sarah Carter and Sarah Hart"
+email: "Sarah.Hart@colostate.edu"
+date: "June 16, 2022"
+output: 
+  bookdown::html_document2:
+    code_folding: hide
+    toc: TRUE
+    toc_depth: 4
+    toc_float: TRUE
+    collapsed: TRUE
+    theme: spacelab
+    fig_caption: TRUE
+    number_sections: FALSE
+citationcolor: blue
+csl: "`r here:::here('ecology.csl')`"
+bibliography: "`r here:::here('MyLib.bib')`"
+editor_options: 
+  chunk_output_type: console
+---
+
+<style>h1 {font-size: 24pt; } h2 {font-size: 20pt; } h3 {font-size: 18pt; } h4 {font-size: 16pt; } h5 {font-size: 14pt; } h6 {font-size: 12pt; } </style>  
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, dpi = 600, progress = FALSE, cache = FALSE, fig.width=5,  fig.height=3.5, fig.align="center")
+
+set.seed(513)
+options(repos = c(CRAN = "http://cran.rstudio.com"))
+options(timeout=60*60*2) #timeout downloads that last longer than an hour
+options(na.action = "na.fail")  
+
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+  here, # easy file structure
+  tidyverse, # data manipulation
+  tidymodels, 
+  reshape, # old data manipulation pkg
+  ggplot2, # figures
+  patchwork, # multiple figures
+  grid, # multiple figures
+  ggsci, # color palettes
+  colorspace, # color palettes
+  RColorBrewer, # color palettes
+  knitr, # markdown documents
+  kableExtra, # tables in markdown
+  flextable, # other table options
+  bookdown, # figure numbering in markdown
+  sp, # spatial data (old pkg)
+  sf, # spatial data (new pkg)
+  raster, # raster data
+  tigris, # US Census bureau GIS data
+  tmap # easy plotting of maps
+) 
+
+
+# Set custom plotting theme
+theme_new <- function(base_size = 9,base_family = "Helvetica"){
+  theme_classic(base_size = base_size, base_family = base_family) %+replace%
+    theme(
+      axis.line.x = element_line(color="black", size = 0.25),
+      axis.line.y = element_line(color="black", size = 0.25),
+      axis.title = element_text(size = 9),
+      axis.text = element_text(colour="black", size=8),
+      legend.key=element_rect(colour=NA, fill =NA),
+      panel.grid = element_blank(),   
+      plot.background = element_rect(fill = NA, colour = NA),
+      panel.border = element_rect(fill = NA, colour = NA),
+      panel.background = element_rect(fill = "white", colour = "black"), 
+      strip.background = element_rect(fill = "white"),
+      strip.text = element_text(size = 9)
+      
+    )
+}
+theme_set(theme_new())
+
+options(ggplot2.continuous.colour="viridis")
+options(scipen=999)
+
+# Set directory structure for project
+dir.create(here("Data/"), showWarnings = FALSE)
+dir.create(here("Results/"), showWarnings = FALSE)
+```
+
+# Objective
+
+
+
+# Download data
+### Recent fires
+
+MTBS Project. 2022. MTBS Data Access: Burned Area Boundaries Dataset. USDA Forest Service/U.S. Geological Survey.
+
+```{r, eval=F}
+dir.create(here("Data/Spatial/MTBS"), showWarnings = FALSE)
+temp <- here("Data/Spatial/MTBS/MTBS.zip")
+download.file("https://edcintl.cr.usgs.gov/downloads/sciweb1/shared/MTBS_Fire/data/composite_data/burned_area_extent_shapefile/mtbs_perimeter_data.zip", temp)
+unzip(temp, exdir=here("Data/Spatial/MTBS/"))
+```
+
+MTBS Project. 2022. MTBS Data Access: 2020 Burn Severity Mosaic for CONUS . USDA Forest Service/U.S. Geological Survey.
+
+Directly downloaded from https://www.mtbs.gov/direct-download and stored in the following directory - ~Data/Spatial/MTBS/composite_data/MTBS_BSmosaics/2020/mtbs_CONUS_2020. (Note I could not find a direct download link for this one).
+
+### COMaP- Colorado Ownership, Management and Protection Database
+
+Colorado Natural Heritage Program and the Geospatial Centroid. 2022. The Colorado Ownership and Protection Map (COMaP). Colorado State University, Ft. Collins, CO. 
+
+Directly downloaded from https://cnhp.colostate.edu/projects/comap/ and stored in the following directory - ~Data/Spatial/CoMap. (This file is not publically available)
+
+
+### CDOT Roads
+Colorado Division of Transportation Development. 2020. Highways.
+Colorado Division of Transportation Development. 2020. Local Roads.
+Colorado Division of Transportation Development. 2020. Major Roads.
+
+```{r download roads data, eval=F}
+dir.create(here("Data/Spatial/Roads"), showWarnings = FALSE)
+temp <- here("Data/Spatial/Roads/CO_HWY.zip")
+download.file("http://dtdapps.coloradodot.info/staticdata/Downloads/StateGeoData/highways.zip", temp )
+unzip(temp, exdir=here("Data/Spatial/Roads/"))
+
+temp <- here("Data/Spatial/Roads/CO_LocalRoads.zip")
+download.file("http://dtdapps.coloradodot.info/staticdata/Downloads/StateGeoData/LocalRoads.zip", temp )
+unzip(temp, exdir=here("Data/Spatial/Roads/"))
+
+temp <- here("Data/Spatial/Roads/CO_MajorRoads.zip")
+download.file("http://dtdapps.coloradodot.info/staticdata/Downloads/StateGeoData/MajorRoads.zip", temp )
+unzip(temp, exdir=here("Data/Spatial/Roads/"))
+```
+
+### USFS Roads data
+```{r download roads data, eval=F}
+dir.create(here("Data/Spatial/Roads"), showWarnings = FALSE)
+temp <- here("Data/Spatial/Roads/S_USA.Road_MVUM.zip")
+download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/shp/S_USA.Road_MVUM.zip", temp )
+unzip(temp, exdir=here("Data/Spatial/Roads/"))
+```
+
+### USFS Trails
+```{r download trails data, eval=F}
+dir.create(here("Data/Spatial/Trails"), showWarnings = FALSE)
+temp <- here("Data/Spatial/Roads/S_USA.TrailNFS_Publish.zip")
+download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/fc/S_USA.TrailNFS_Publish.gdb.zip", temp )
+unzip(temp, exdir=here("Data/Spatial/Trails/"))
+```
+
+### High resolution aspen cover
+
+Cook and Balch (unpublished)
+- This code will download a 10 m resolution map of aspen cover for the Southern Rocky Mountain Ecoregion, which extends from southern Wyoming to northern New Mexico. The map represents aspen cover in ca. 2019 and was produced from Sentinel imagery.
+
+```{r, eval=F}
+dir.create(here("Data/Spatial/Aspen"), showWarnings = FALSE)
+temp <- here("Data/Spatial/Aspen/SRM_ASPEN_CLASSIFIED_RF_10M_V1_0522.tif")
+download.file("https://drive.google.com/file/d/1uhV4rCJ6DM26HoyNU-emuh3rPxrR807Q/view?usp=sharing", temp )
+```
+
+### Climate data
+Rodman, K. C., T. T. Veblen, M. A. Battaglia, M. E. Chambers, P. J. Fornwalt, Z. A. Holden, T. E. Kolb, J. R. Ouzts, and M. T. Rother. 2020. A changing climate is snuffing out post‐fire recovery in montane forests. Global Ecology and Biogeography:geb.13174.
+
+```{r download AET & CWD data, eval=F}
+dir.create(here("Data/Spatial/Climate"), showWarnings = FALSE)
+temp <- here("Data/Spatial/Climate/doi_10.5061_dryad.cz8w9gj1b__v2.zip")
+download.file("https://datadryad.org/stash/downloads/file_stream/369982", temp )
+unzip(temp, exdir=here("Data/Spatial/Climate/TraitBasedApproach_Rodman"))
+```
+
+### USFS Timber Harvest data
+```{r download timber harvest data, eval=F}
+dir.create(here("Data/Spatial/TimberHarvests"), showWarnings = FALSE)
+temp <- here("Data/Spatial/TimberHarvests/TimberHarvests.zip")
+download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/fc/S_USA.Activity_TimberHarvest.gdb.zip", temp)
+unzip(temp, exdir=here("Data/Spatial/TimberHarvests"))
+```
+
+### USFS Reforestation data
+```{r download reforestation data, eval=F}
+dir.create(here("Data/Spatial/Reforestation"), showWarnings = FALSE)
+temp <- here("Data/Spatial/Reforestation/Reforestation.zip")
+download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/fc/S_USA.Activity_SilvReforestation.gdb.zip", temp)
+unzip(temp, exdir=here("Data/Spatial/Reforestation"))
+```
+
+### USFS Fuel Treatment data
+```{r download Fuel Treatment data, eval=F}
+dir.create(here("Data/Spatial/FuelTreatment"), showWarnings = FALSE)
+temp <- here("Data/Spatial/FuelTreatment/FuelTreatment.zip")
+download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/shp/S_USA.Activity_HazFuelTrt_PL.zip", temp)
+unzip(temp, exdir=here("Data/Spatial/FuelTreatment"))
+```
+
+### USFS TSI data
+```{r download Fuel Treatment data, eval=F}
+dir.create(here("Data/Spatial/TSI"), showWarnings = FALSE)
+temp <- here("Data/Spatial/TSI/TSI.zip")
+download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/fc/S_USA.Activity_SilvTSI.gdb.zip", temp)
+unzip(temp, exdir=here("Data/Spatial/TSI"))
+```
+
+# Data processing
+
+## Study are
+
+## Select areas of public land that burned
+
+I had issues reading the CoMAP 
+
+#comap <- st_read(here("Data/Spatial/CoMaP/COMaP_v20190306.gdb")) %>% 
+  filter(legend %in% c("BLM", "Federal", "Local", "NPS", "State", "USFS")) 
+```{r}
+comap <- st_read(here("Data/Spatial/CoMaP/COMAP-public.shp"))
+
+select.fires <- st_read(here("Data/Spatial/MTBS/mtbs_perims_DD.shp")) %>% 
+  filter(Incid_Name %in% c("CALWOOD", "CAMERON PEAK", "EAST TROUBLESOME")) %>% 
+  st_transform(crs(comap))  
+
+burned.public <- st_intersection(comap, select.fires)
+```
+
+## Roads
+
+
+### Select USFS roads that are easy enough to drive
+
+OPERATIONA:
+5 - HIGH DEGREE OF USER COMFORT
+4 - MODERATE DEGREE OF USER COMFORT
+3 - SUITABLE FOR PASSENGER CARS
+
+```{r}
+select.usfs.roads <- st_read(here("Data/Spatial/Roads/S_USA.Road_MVUM.shp")) %>% 
+  filter(OPERATIONA %in% c("5 - HIGH DEGREE OF USER COMFORT", "4 - MODERATE DEGREE OF USER COMFORT", "3 - SUITABLE FOR PASSENGER CARS"))  %>%
+  st_transform(st_crs(select.fires)) %>% # change projection
+  st_crop(st_bbox(select.fires)) %>% # crop to study area
+  st_union() 
+```
+
+### CoDOT Roads
+```{r}
+hwys <- rgdal::readOGR(here("Data/Spatial/Roads/SHP/STATEWIDE/Highways.shp")) %>% # note for some reason the sf package could not read in this file but rgdal could
+  st_as_sf() %>% 
+  st_zm() %>%
+  st_transform(st_crs(select.fires)) %>% 
+  st_crop(st_bbox(select.fires)) %>%  # crop to study area
+  st_union()
+local <- st_read(here("Data/Spatial/Roads/SHP/STATEWIDE/local_roads.shp")) %>%
+  st_zm() %>%
+  st_transform(crs=st_crs(select.fires))  %>% 
+  st_crop(st_bbox(select.fires)) %>%  # crop to study area
+  st_union()
+major <- st_read(here("Data/Spatial/Roads/SHP/STATEWIDE/Major_Roads.shp")) %>%
+  st_zm() %>% 
+  st_transform(crs=st_crs(select.fires)) %>% 
+  st_crop(st_bbox(select.fires)) %>%  # crop to study area
+  st_union()
+```
+
+```{r}
+sf_use_s2(FALSE) # turn off spherical geometry
+
+hwys1000 <- hwys %>% st_buffer(dist=1000)
+major1000 <- major %>% st_buffer(dist=1000)
+local1000 <- local %>% st_buffer(dist=1000)
+select.usfs.roads1000 <- select.usfs.roads %>% st_buffer(dist=1000)
+roadz1000 <- st_union(hwys1000, major1000) %>% st_union(local1000) %>% st_union(select.usfs.roads1000)
+
+hwys2000 <- hwys %>% st_buffer(dist=2000)
+major2000 <- major %>% st_buffer(dist=2000)
+local2000 <- local %>% st_buffer(dist=2000)
+select.usfs.roads2000 <- select.usfs.roads %>% st_buffer(dist=2000)
+roadz2000 <- st_union(hwys2000, major2000) %>% st_union(local2000) %>% st_union(select.usfs.roads2000)
+
+hwys30 <- hwys %>% st_buffer(dist=30)
+major30 <- major %>% st_buffer(dist=30)
+local30 <- local %>% st_buffer(dist=30)
+select.usfs.roads30 <- select.usfs.roads %>% st_buffer(dist=30)
+roadz30<- st_union(hwys30, major30) %>% st_union(local30) %>% st_union(select.usfs.roads30)
+```
+
+## Trails
+
+Select trails where at least some segment is within 30 meters of a road (this should approximate a trial head). From these trails, select areas within 500 meters of the trail and within 2 kilometers of road. 
+
+```{r}
+trails <- st_read(here("Data/Spatial/Trails/Trails.shp")) %>%
+  st_transform(st_crs(select.fires)) %>% 
+  st_crop(st_bbox(select.fires)) 
+
+# identify trails that intersect roads
+trail.id <- st_intersects(roadz30, trails)
+
+trailz <- trails[trail.id[[1]],]
+ 
+trailz <- trailz %>% st_buffer(dist=500) # buffer by 500 m
+trailz2 <- st_intersection(trailz, roadz2000) # select part of trail within 2 km of road
+```
+
+
+## Select areas of public land that burned that are within 1 km of a road
+
+```{r}
+accessible <- st_union(trailz2, roadz1000)
+
+burned.public.accessible <- st_intersection(accessible, burned.public)
+```
+
+## Aspen data
+```{r}
+aspen <- read_stars(here("Data/Spatial/Aspen/SRM_ASPEN_CLASSIFIED_RF_10M_V1_0522.tif"))
+bb <- st_transform(select.fires, st_crs(aspen))
+aspen <- aspen %>% st_crop(st_bbox(bb))
+
+aspen.p <- st_as_sf(aspen[1], as_points = FALSE, merge =TRUE) 
+
+aspen.p1 <- aspen.p %>%
+  filter(SRM_ASPEN_CLASSIFIED_RF_10M_V1_0522.tif==1) %>% 
+  st_transform(st_crs(burned.public.accessible))
+
+aspen.p0 <- aspen.p %>%
+  filter(SRM_ASPEN_CLASSIFIED_RF_10M_V1_0522.tif==0) %>% 
+  st_transform(st_crs(burned.public.accessible))
+```
+
+## Select areas of public land that burned that are within 1 km of a road with aspen
+```{r}
+burned.public.accessible.withaspen <- st_intersection(burned.public.accessible, aspen.p1)
+st_write(burned.public.accesible.withaspen, here("Data/Spatial/SamplingAreaAspen.shp"))
+
+burned.public.accessible.withnoaspen <- st_intersection(burned.public.accessible, aspen.p0)
+st_write(burned.public.accesible.withnoaspen, here("Data/Spatial/SamplingAreaNoAspen.shp"))
+```
+
+
+
+# References

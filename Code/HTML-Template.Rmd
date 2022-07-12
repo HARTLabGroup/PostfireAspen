@@ -1,63 +1,86 @@
 ---
-title: " "
-author: " "
-email: " "
-date: " "
+title: "Preliminary Analyses - Lodgepole seeding experiment"
+author: "Sarah Hart "
+email: "Sarah.Hart@colostate.edu"
+date: "April 23, 2021"
 output: 
   bookdown::html_document2:
     code_folding: hide
     toc: TRUE
     toc_depth: 4
     toc_float: TRUE
-    collapsed: FALSE
+    collapsed: TRUE
     theme: spacelab
     fig_caption: TRUE
     number_sections: FALSE
+citationcolor: blue
+csl: "`r here:::here('ecology.csl')`"
+bibliography: "`r here:::here('MyLib.bib')`"
+editor_options: 
+  chunk_output_type: console
 ---
-```{r setup, results=F, message=F, echo=F}
-knitr::opts_chunk$set(warning = FALSE, message = FALSE, results=F, echo=F) 
 
-ipak <- function(pkg){
-    new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
-    if (length(new.pkg)>0) {
-             install.packages(new.pkg, dependencies = TRUE)
-    }
-    easypackages::libraries(pkg)
-}
+<style>h1 {font-size: 24pt; } h2 {font-size: 20pt; } h3 {font-size: 18pt; } h4 {font-size: 16pt; } h5 {font-size: 14pt; } h6 {font-size: 12pt; } </style>  
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, dpi = 600, progress = FALSE, cache = FALSE, fig.width=5,  fig.height=3.5, fig.align="center")
+
+set.seed(513)
 options(repos = c(CRAN = "http://cran.rstudio.com"))
+options(timeout=60*30) #timeout downloads that last longer than 30 minutes
+options(na.action = "na.fail")  
 
-### Import libraries
-ipak(c('easypackages','ggplot2', 'patchwork', 'knitr', 'here', 'tidyverse', 'ggsci', 'sf', 'raster'))
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+  here, # easy file structure
+  tidyverse, # data manipulation
+  tidymodels, 
+  reshape, # old data manipulation pkg
+  ggplot2, # figures
+  patchwork, # multiple figures
+  grid, # multiple figures
+  ggsci, # color palettes
+  colorspace, # color palettes
+  RColorBrewer, # color palettes
+  knitr, # markdown documents
+  kableExtra, # tables in markdown
+  flextable, # other table options
+  bookdown, # figure numbering in markdown
+  sp, # spatial data (old pkg)
+  sf, # spatial data (new pkg)
+  raster, # raster data
+  tigris, # US Census bureau GIS data
+  tmap # easy plotting of maps
+) 
 
-# Set seed
-set.seed(2022)
 
-# Set plotting options
-options(scipen=999)
-theme_new <- function(base_size = 6,base_family = "Helvetica"){
+# Set custom plotting theme
+theme_new <- function(base_size = 9,base_family = "Helvetica"){
   theme_classic(base_size = base_size, base_family = base_family) %+replace%
     theme(
       axis.line.x = element_line(color="black", size = 0.25),
       axis.line.y = element_line(color="black", size = 0.25),
-      axis.title = element_text(size = 6),
-      axis.text = element_text(colour="black", size=),
+      axis.title = element_text(size = 9),
+      axis.text = element_text(colour="black", size=8),
       legend.key=element_rect(colour=NA, fill =NA),
       panel.grid = element_blank(),   
       plot.background = element_rect(fill = NA, colour = NA),
       panel.border = element_rect(fill = NA, colour = NA),
       panel.background = element_rect(fill = "white", colour = "black"), 
       strip.background = element_rect(fill = "white"),
-      strip.text = element_text(size = 8)
+      strip.text = element_text(size = 9)
       
     )
 }
 theme_set(theme_new())
 
-options(timeout=60*60)
-```
+options(ggplot2.continuous.colour="viridis")
+options(scipen=999)
 
-# Abstract
+# Set directory structure for project
+dir.create(here("Data/"), showWarnings = FALSE)
+dir.create(here("Results/"), showWarnings = FALSE)
+```
 
 # Keywords
 
