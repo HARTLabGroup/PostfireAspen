@@ -1,0 +1,72 @@
+---
+title: "POTR"
+author: "Sarah Carter"
+date: "8/29/2022"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+POTR <- read.csv("/Users/sarahcarter/Downloads/POTR Seedling Data - Sheet1.csv")
+str(POTR)
+
+#rename variables because they are confusing 
+POTR$site.name <- POTR$SITE.NAME
+POTR$siteID <- POTR$SITE..
+POTR$height <- POTR$Height..cm.
+
+```
+
+
+
+```{r}
+#dotplot height by cluster
+ggplot(POTR,aes(x=site.name,y=height, col = height)) + geom_point() + 
+    xlab("Site Cluster Name") + 
+    ylab(expression(paste("Height cm"))) +
+    theme_bw(base_size = 16) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + ggtitle(" Seedling Height by Cluster")
+
+```
+
+```{r}
+#boxplot height by cluster
+ggplot(POTR, aes(x=site.name, y=height)) + 
+  geom_boxplot() +
+  xlab("Site Cluster") +
+  ylab(expression(paste("Height cm"))) +
+  ggtitle("Seedling Height by Cluster")
+
+```
+
+```{r}
+#histogram counts
+
+ggplot(POTR, aes(x=siteID, fill=siteID)) +
+   geom_histogram(colour = "black", fill = "light blue", bins = 38, binwidth = 1) +
+  xlab("Site Number") +
+  ylab(expression(paste("Seedling Count"))) +
+  ggtitle("Seedling Count Distribution Across all Sites")
+
+count(POTR, site.name)
+```
+
+Another random interesting plot type:
+```{r}
+install.packages("ggridges")
+library(ggridges)
+#ridgeplot
+ggplot(POTR, aes(x = height, y = site.name, fill=site.name)) +
+  geom_density_ridges() +
+  xlab("Height cm") +
+  ylab(expression(paste("Cluster Name"))) +
+  ggtitle("Seedling Height Distribution")
+```
+
+

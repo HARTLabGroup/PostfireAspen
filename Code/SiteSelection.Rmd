@@ -20,8 +20,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-<style>h1 {font-size: 24pt; } h2 {font-size: 20pt; } h3 {font-size: 18pt; } h4 {font-size: 16pt; } h5 {font-size: 14pt; } h6 {font-size: 12pt; } </style>  
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(message = FALSE, warning = FALSE, dpi = 600, progress = FALSE, cache = FALSE, fig.width=5,  fig.height=3.5, fig.align="center")
 
@@ -87,12 +85,10 @@ dir.create(here("Results/"), showWarnings = FALSE)
 
 # Objective
 
+The purpose of this code is to identify accessible sites that burned at high severity within the Cameron Peak Fire that were nearby existing patches of aspen.
 
-
-# Download data
-### Recent fires
-
-MTBS Project. 2022. MTBS Data Access: Burned Area Boundaries Dataset. USDA Forest Service/U.S. Geological Survey.
+## Data
+To identify potential sites. We first obtained GIS data describing the extent of the Cameron Peak fire from the Monitoring Trends in Burn Severity Project,
 
 ```{r, eval=F}
 dir.create(here("Data/Spatial/MTBS"), showWarnings = FALSE)
@@ -101,23 +97,25 @@ download.file("https://edcintl.cr.usgs.gov/downloads/sciweb1/shared/MTBS_Fire/da
 unzip(temp, exdir=here("Data/Spatial/MTBS/"))
 ```
 
-MTBS Project. 2022. MTBS Data Access: 2020 Burn Severity Mosaic for CONUS . USDA Forest Service/U.S. Geological Survey.
+We also obtained spatially data describing land ownership from the USFS and the Colorado Natural Heritage Program and the Geospatial Centroid.
 
-Directly downloaded from https://www.mtbs.gov/direct-download and stored in the following directory - ~Data/Spatial/MTBS/composite_data/MTBS_BSmosaics/2020/mtbs_CONUS_2020. (Note I could not find a direct download link for this one).
+```{r, eval=F}
+dir.create(here("Data/Spatial/USFS"), showWarnings = FALSE)
+temp <- here(paste0("Data/Spatial/USFS/RangerDistricts.zip"))
+download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/shp/S_USA.RangerDistrict.zip", temp)
+unzip(temp, exdir=here("Data/Spatial/USFS/"))
+```
 
-### COMaP- Colorado Ownership, Management and Protection Database
+```{r, eval=F}
+dir.create(here("Data/Spatial/CoMaP"), showWarnings = FALSE)
+temp <- here(paste0("Data/Spatial/CoMaP/CoMaP_GDB.zip"))
+download.file("https://comap.cnhp.colostate.edu/dev/mapcollab/site/COMaP_GDB", temp)
+unzip(temp, exdir=here("Data/Spatial/CoMaP"))
+```
 
-Colorado Natural Heritage Program and the Geospatial Centroid. 2022. The Colorado Ownership and Protection Map (COMaP). Colorado State University, Ft. Collins, CO. 
+To identify sites that were easily accessible, we acquired spatial data describing the location of roads from CDOT and the USFS and the location of trails from the USFS.
 
-Directly downloaded from https://cnhp.colostate.edu/projects/comap/ and stored in the following directory - ~Data/Spatial/CoMap. (This file is not publically available)
-
-
-### CDOT Roads
-Colorado Division of Transportation Development. 2020. Highways.
-Colorado Division of Transportation Development. 2020. Local Roads.
-Colorado Division of Transportation Development. 2020. Major Roads.
-
-```{r download roads data, eval=F}
+```{r  download CDOT roads data, eval=F}
 dir.create(here("Data/Spatial/Roads"), showWarnings = FALSE)
 temp <- here("Data/Spatial/Roads/CO_HWY.zip")
 download.file("http://dtdapps.coloradodot.info/staticdata/Downloads/StateGeoData/highways.zip", temp )
@@ -132,15 +130,13 @@ download.file("http://dtdapps.coloradodot.info/staticdata/Downloads/StateGeoData
 unzip(temp, exdir=here("Data/Spatial/Roads/"))
 ```
 
-### USFS Roads data
-```{r download roads data, eval=F}
+```{r download USFS roads data, eval=F}
 dir.create(here("Data/Spatial/Roads"), showWarnings = FALSE)
 temp <- here("Data/Spatial/Roads/S_USA.Road_MVUM.zip")
 download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/shp/S_USA.Road_MVUM.zip", temp )
 unzip(temp, exdir=here("Data/Spatial/Roads/"))
 ```
 
-### USFS Trails
 ```{r download trails data, eval=F}
 dir.create(here("Data/Spatial/Trails"), showWarnings = FALSE)
 temp <- here("Data/Spatial/Roads/S_USA.TrailNFS_Publish.zip")
@@ -148,10 +144,7 @@ download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/fc/S_USA.Trail
 unzip(temp, exdir=here("Data/Spatial/Trails/"))
 ```
 
-### High resolution aspen cover
-
-Cook and Balch (unpublished)
-- This code will download a 10 m resolution map of aspen cover for the Southern Rocky Mountain Ecoregion, which extends from southern Wyoming to northern New Mexico. The map represents aspen cover in ca. 2019 and was produced from Sentinel imagery.
+To quantify the proximity of sites to pre-fire aspen cover, we acquired a 10 m resolution map of aspen cover for the Southern Rocky Mountain Ecoregion from Cook et al. (in review). The map represents aspen cover in ca. 2019 and was produced from Sentinel imagery.
 
 ```{r, eval=F}
 dir.create(here("Data/Spatial/Aspen"), showWarnings = FALSE)
@@ -159,69 +152,10 @@ temp <- here("Data/Spatial/Aspen/SRM_ASPEN_CLASSIFIED_RF_10M_V1_0522.tif")
 download.file("https://drive.google.com/file/d/1uhV4rCJ6DM26HoyNU-emuh3rPxrR807Q/view?usp=sharing", temp )
 ```
 
-### Elevation
-
-LANDFIRE: LANDFIRE Elevation layer.
-(2013, June - last update). U.S.
-Department of Interior, Geological Survey, and U.S. Department of Agriculture.
-[Online]. Available:
-http://landfire.cr.usgs.gov/viewer/ [2020, J].
-```{r, eval=F}
-dir.create(here("Data/Spatial/Elev"), showWarnings = FALSE)
-temp <- here("Data/Spatial/Elev/US_Topo_2020-LF2020_Elev_220_CONUS.zip")
-download.file("https://landfire.gov/bulk/downloadfile.php?FNAME=US_Topo_2020-LF2020_Elev_220_CONUS.zip&TYPE=landfire", temp )
-unzip(temp, exdir=here("Data/Spatial/Elev/"))
-
-```
-
-### Climate data
-Rodman, K. C., T. T. Veblen, M. A. Battaglia, M. E. Chambers, P. J. Fornwalt, Z. A. Holden, T. E. Kolb, J. R. Ouzts, and M. T. Rother. 2020. A changing climate is snuffing out post‐fire recovery in montane forests. Global Ecology and Biogeography:geb.13174.
-
-```{r download AET & CWD data, eval=F}
-dir.create(here("Data/Spatial/Climate"), showWarnings = FALSE)
-temp <- here("Data/Spatial/Climate/doi_10.5061_dryad.cz8w9gj1b__v2.zip")
-download.file("https://datadryad.org/stash/downloads/file_stream/369982", temp )
-unzip(temp, exdir=here("Data/Spatial/Climate/TraitBasedApproach_Rodman"))
-```
-
-### USFS Timber Harvest data
-```{r download timber harvest data, eval=F}
-dir.create(here("Data/Spatial/TimberHarvests"), showWarnings = FALSE)
-temp <- here("Data/Spatial/TimberHarvests/TimberHarvests.zip")
-download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/fc/S_USA.Activity_TimberHarvest.gdb.zip", temp)
-unzip(temp, exdir=here("Data/Spatial/TimberHarvests"))
-```
-
-### USFS Reforestation data
-```{r download reforestation data, eval=F}
-dir.create(here("Data/Spatial/Reforestation"), showWarnings = FALSE)
-temp <- here("Data/Spatial/Reforestation/Reforestation.zip")
-download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/fc/S_USA.Activity_SilvReforestation.gdb.zip", temp)
-unzip(temp, exdir=here("Data/Spatial/Reforestation"))
-```
-
-### USFS Fuel Treatment data
-```{r download Fuel Treatment data, eval=F}
-dir.create(here("Data/Spatial/FuelTreatment"), showWarnings = FALSE)
-temp <- here("Data/Spatial/FuelTreatment/FuelTreatment.zip")
-download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/shp/S_USA.Activity_HazFuelTrt_PL.zip", temp)
-unzip(temp, exdir=here("Data/Spatial/FuelTreatment"))
-```
-
-### USFS TSI data
-```{r download Fuel Treatment data, eval=F}
-dir.create(here("Data/Spatial/TSI"), showWarnings = FALSE)
-temp <- here("Data/Spatial/TSI/TSI.zip")
-download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/fc/S_USA.Activity_SilvTSI.gdb.zip", temp)
-unzip(temp, exdir=here("Data/Spatial/TSI"))
-```
-
-# Data processing
-
-## Study area
+## Identification of potential study sites
 
 1. Select areas of public land that burned at high severity
-```{r}
+```{r, eval=F}
 fireseverity <-  read_stars(here("Data/Spatial/MTBS/composite_data/MTBS_BSmosaics/2020/mtbs_CONUS_2020/mtbs_CONUS_2020.tif"))
 
 select.fires <- st_read(here("Data/Spatial/MTBS/mtbs_perims_DD.shp")) %>% 
@@ -238,7 +172,7 @@ st_write(burned.public, here("Data/Spatial/Sampling/Burned-public.shp"), append=
 
 2. Select roads that are easy enough to drive
 
-```{r}
+```{r, eval=F}
 select.usfs.roads <- st_read(here("Data/Spatial/Roads/S_USA.Road_MVUM.shp")) %>% 
   filter(OPERATIONA %in% c("5 - HIGH DEGREE OF USER COMFORT", "4 - MODERATE DEGREE OF USER COMFORT", "3 - SUITABLE FOR PASSENGER CARS"))  %>%
   st_transform(st_crs(select.fires)) %>% # change projection
@@ -246,7 +180,7 @@ select.usfs.roads <- st_read(here("Data/Spatial/Roads/S_USA.Road_MVUM.shp")) %>%
   st_union() 
 ```
 
-```{r}
+```{r, eval=F}
 hwys <- rgdal::readOGR(here("Data/Spatial/Roads/SHP/STATEWIDE/Highways.shp")) %>% # note for some reason the sf package could not read in this file but rgdal could
   st_as_sf() %>% 
   st_zm() %>%
@@ -265,20 +199,16 @@ major <- st_read(here("Data/Spatial/Roads/SHP/STATEWIDE/Major_Roads.shp")) %>%
   st_union()
 ```
 
-3. Trails
+3. Select trails that intersect the fire
 
-```{r}
+```{r, eval=F}
 trails <- st_read(here("Data/Spatial/Trails/Trails.shp")) %>%
   st_transform(st_crs(select.fires)) %>% 
   st_crop(st_bbox(select.fires)) 
 ```
 
-
-4. Study area
-Select areas of public land that:
-2) < 500 m away from the trail
-
-```{r}
+4. Select areas of public land that are 1000 m away from a road
+```{r, eval=F}
 sf_use_s2(FALSE) # turn off spherical geometry
 
 hwys1000 <- hwys %>% st_buffer(dist=1000)
@@ -318,7 +248,8 @@ select.usfs.roads30 <- select.usfs.roads %>% st_buffer(dist=30)
 roadz30<- st_union(hwys30, major30) %>% st_union(local30) %>% st_union(select.usfs.roads30)
 ```
 
-```{r}
+5. Select areas of public land that are 500 m away from a trail and no more than 1 km up the trail
+```{r, eval=F}
 # identify trails that intersect roads
 trail.id <- st_intersects(roadz30, trails)
 
@@ -328,7 +259,7 @@ trailz <- trailz %>% st_buffer(dist=500) # buffer by 500 m
 trailz2 <- st_intersection(trailz, roadz1000) # select part of trail within 1 km of a road
 ```
 
-```{r}
+```{r, eval=F}
 accessible <- st_union(trailz2, roadz250)
 st_write(accessible, here("Data/Spatial/Sampling/accessible.shp"), append=F)
 
@@ -336,9 +267,8 @@ burned.public.accessible <- st_intersection(accessible, burned.public)  %>% st_u
 st_write(burned.public.accessible, here("Data/Spatial/Sampling/burned-public-accessible.shp"), append=F)
 ```
 
-
-# Import closed roads and trails
-```{r}
+6. Exclude area that was closed due to road damage or post-fire management activities
+```{r, eval=F}
 closed.roads <- st_read(here('Data/Spatial/Sampling/Closures/CameronPeak-RoadClosures.shp')) %>%
   st_transform(st_crs(burned.public.accessible)) %>% 
   st_buffer(dist=1000) %>% 
@@ -359,10 +289,8 @@ burned.public.accessible.closed <-  st_difference(burned.public.accessible, clos
 st_write(burned.public.accessible.closed, here("Data/Spatial/Sampling/burned-public-accessible-closed.shp"), append=F)
 ```
 
-
-## Aspen data
-Convert aspen data to a polygon to select areas with aspen 
-```{r}
+7. Identify areas >100 m and <1000 m away from pre-fire aspen patch
+```{r, eval=F}
 aspen <- read_stars(here("Data/Spatial/Aspen/SRM_ASPEN_CLASSIFIED_RF_10M_V1_0522.tif"))
 bb <- st_transform(select.fires, st_crs(aspen))
 aspen <- aspen %>% st_crop(st_bbox(bb))
@@ -392,24 +320,24 @@ aspen.p1.100.1000 <- st_difference(aspen.p1.1000, aspen.p1.100) %>%
   st_union()
 st_write(aspen.p1.100.1000, here("Data/Spatial/Sampling/aspen-p1-sub-100-1000.shp"), append=F)
 
-```
-
-## Sampling area
-```{r}
 burned.public.accessible.closed <- st_transform(burned.public.accessible.closed, st_crs(aspen))
 burned.public.accessible.withaspen.100.1000 <- st_intersection(burned.public.accessible.closed,aspen.p1.100.1000 )
 burned.public.accessible.withaspen.100.1000 <- st_as_sf(burned.public.accessible.withaspen.100.1000 ) %>% mutate(value=1)
 
 st_write(burned.public.accessible.withaspen.100.1000 , here("Data/Spatial/Sampling/burnedpublic-accessible-aspen-p1-low-100-1000.shp"), append=F)
+```
 
+8. Create a regular sample so that points are all at least 250 m apart
+
+```{r, eval=F}
 # create regular sample
 sampleareaz.grid <- as(make_grid(burned.public.accessible.withaspen.100.1000 , res=250), "Raster")
 sampleareaz.grid  <- fasterize(burned.public.accessible.withaspen.100.1000, sampleareaz.grid , field="value")
 sampleareaz.pts <- st_as_sf(raster::rasterToPoints(sampleareaz.grid, spatial=T))
 ```
 
-
-```{r}
+9. Select points that burned at high severity
+```{r, eval=F}
 ## Assign aet, cwd, elevation, watershed identity, and aspen suitability
 aetr <-  read_stars(here("Data/Spatial/Climate/TraitBasedApproach_Rodman/AET and CWD/AET_1981-2010.tif"))
 cwdr <-  read_stars(here("Data/Spatial/Climate/TraitBasedApproach_Rodman/AET and CWD/CWD_1981-2010.tif"))
@@ -429,10 +357,6 @@ xseverity <- st_extract(fireseverity, st_transform(sampleareaz.pts, st_crs(fires
 sampleareaz.pts.latlon <- st_transform(sampleareaz.pts, CRS("+init=epsg:4269"))
 sampleareaz.pts <- sampleareaz.pts %>% mutate(Lat = st_coordinates(sampleareaz.pts.latlon)[,2], Lon =st_coordinates(sampleareaz.pts.latlon)[,1], Easting=st_coordinates(sampleareaz.pts)[,1], Northing= st_coordinates(sampleareaz.pts)[,2], Fire = xfire$Incid_Name, Severity = xseverity$mtbs_CONUS_2020.tif, Watershed = xwater$Name, AET = xaetr$`AET_1981-2010.tif`, CWD=xcwdr$`CWD_1981-2010.tif`, Elev = xelevr$LC20_Elev_220.tif, Suitability=xaspen.suitability$`Coops-AspenModeledFreq1950-2006.tif`)
 
-```
-
-# Select 
-```{r}
 cp.pts <- sampleareaz.pts %>%  filter(Fire== "CAMERON PEAK")
 cp.pts <- cp.pts %>%  filter(Severity==4)
 cp.pts$ID <- row.names(cp.pts)
