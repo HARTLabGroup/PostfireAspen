@@ -1,77 +1,139 @@
 ---
-title: "POTR"
-author: "Sarah Carter"
-date: "8/29/2022"
+title: "Site selection for postfire aspen project"
+author: "Sarah Carter and Sarah Hart"
+email: "Sarah.Hart@colostate.edu"
+date: "June 16, 2022"
 output: 
   bookdown::html_document2:
     code_folding: hide
     toc: TRUE
     toc_depth: 4
     toc_float: TRUE
-    collapsed: FALSE
+    collapsed: TRUE
     theme: spacelab
     fig_caption: TRUE
     number_sections: FALSE
+citationcolor: blue
+csl: "`r here:::here('ecology.csl')`"
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, dpi = 600, progress = FALSE, cache = FALSE, fig.width=5,  fig.height=3.5, fig.align="center")
+
+set.seed(513)
+options(repos = c(CRAN = "http://cran.rstudio.com"))
+options(timeout=60*60*2) #timeout downloads that last longer than an hour
+options(na.action = "na.fail")  
+
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+  here, # easy file structure
+  tidyverse, # data manipulation
+  tidymodels, 
+  ggplot2, # figures
+  patchwork, # multiple figures
+  readxl, # read excel files
+  ggpubr, # plotting
+  ggridges # plotting
+) 
+
+
+# Set custom plotting theme
+theme_new <- function(base_size = 9,base_family = "Helvetica"){
+  theme_classic(base_size = base_size, base_family = base_family) %+replace%
+    theme(
+      axis.line.x = element_line(color="black", size = 0.25),
+      axis.line.y = element_line(color="black", size = 0.25),
+      axis.title = element_text(size = 9),
+      axis.text = element_text(colour="black", size=8),
+      legend.key=element_rect(colour=NA, fill =NA),
+      panel.grid = element_blank(),   
+      plot.background = element_rect(fill = NA, colour = NA),
+      panel.border = element_rect(fill = NA, colour = NA),
+      panel.background = element_rect(fill = "white", colour = "black"), 
+      strip.background = element_rect(fill = "white"),
+      strip.text = element_text(size = 9)
+      
+    )
+}
+theme_set(theme_new())
+
+options(ggplot2.continuous.colour="viridis")
+options(scipen=999)
+
+# Set directory structure for project
+dir.create(here("Data/"), showWarnings = FALSE)
+dir.create(here("Results/"), showWarnings = FALSE)
 ```
 
-```{r}
-POTR <- read.csv("/Users/sarahcarter/Downloads/POTR Seedling Data - Sheet1.csv")
+# Import data
+```{r importData}
+
+POTR <- read_excel(here("Data", "POTR Seedling Data-2.xlsx"))
 #str(POTR)
-POTR_site <- read.csv("/Users/sarahcarter/Downloads/POTR SITE DATA - Sheet1.csv")
+colnames(POTR) <- tolower(c("SITE.NAME", "SITE.NO", "TRANSECT", "SUBPLOT", "HEIGHT", "SUBSTRATE", "SM.TOPO", "LG.TOPO", "LG.CWD", "SM.CWD","SUCKER.DIST", "CC", "BROWSE"))
+
+POTR_site <- read_excel(here("Data", "POTR SITE DATA.xlsx"))
 #str(POTR_site)
-REGEN <- read.csv("/Users/sarahcarter/Downloads/ALL REGEN - Sheet1.csv")
+colnames(POTR_site) <- tolower(c("SITE.NO", "CLUSTER", "UTM.E", "UTM.N", "ELEVATION", "SLOPE", "ASPECT", "TOPO", "TRANS.A.DIR", "TRANS.B.DIR", "LIVE.DIST", "DEAD.DIST"))
+
+REGEN <- read_excel(here("Data", "ALL REGEN.xlsx"))
+#str(REGEN)
+colnames(REGEN) <- tolower(c("SITE.NO", "TRANSECT", "POINT", "ABLA", "PICO", "PIEN", "PIPO", "PSME", "POTR.sucker", "POTR.seed"))
 
 #rename variables because they are confusing 
-POTR$site.name <- POTR$SITE.NAME
-POTR$site.Number <- POTR$SITE..
-POTR$height <- POTR$Height..cm.
+#POTR$site.name <- POTR$SITE.NAME
+#POTR$site.Number <- POTR$SITE..
+#POTR$height <- POTR$Height..cm.
 ```
 
-#merging site and seedling data
+# Data wrangling
+
 ```{r}
-compiled <- merge(POTR, POTR_site, by.x = "SITE..", by.y = "Site.Number")
+compiled <- merge(POTR, POTR_site, by = "site.no")
+
+# 
+
+compiled2 <- REGEN %>% group_by(site.no) %>% summarize_at(.vars=vars(abla:potr.seed), .fun=sum)
+compiled2 <- merge(compiled2, 
+POTR_site,  by = "site.no")
+compiled2$potr.seed01 <- ifelse(compiled2$potr.seed>0, 1,0)
+
+compiled.regen <- compiled.regen %>% group_by(site.no, transect)
+
 #compiled
 ```
 
-#packages
-```{r}
-#install.packages("ggplot2")
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-```
+# Data exploration
 
 
+
+## Seedling height by cluster
 ```{r}
 #dotplot height by cluster
 ggplot(compiled,aes(x=site.name,y=height, col = height)) + geom_point() + 
     xlab("Site Cluster Name") + 
-    ylab(expression(paste("Height cm"))) +
+    ylab(expression(paste("Height (cm)"))) +
     theme_bw(base_size = 16) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + ggtitle(" Seedling Height by Cluster")
 ```
-
 ```{r}
 #boxplot height by cluster
 ggplot(POTR, aes(x=site.name, y=height)) + 
   geom_boxplot() +
   xlab("Site Cluster") +
-  ylab(expression(paste("Height cm"))) +
+  ylab(expression(paste("Height (cm)"))) +
   ggtitle("Seedling Height by Cluster")
 
 ```
-
 ```{r}
 #histogram counts
 count <- count(compiled, site.name)
 count
 
-
 #filter for seedling density
-dense <- compiled %>% filter(SITE.NAME == "CAM"| SITE.NAME == "LONG"| SITE.NAME == "MONTY"| SITE.NAME == "RAWAH" | SITE.NAME == "SNOW")
+dense <- compiled %>% filter(site.name == "CAM"| site.name == "LONG"| site.name == "MONTY"| site.name == "RAWAH" | site.name == "SNOW")
 
 #height by cluster for dense clusters 
 ggplot(dense,aes(x=site.name,y=height, col = height)) + geom_point() + 
@@ -80,25 +142,15 @@ ggplot(dense,aes(x=site.name,y=height, col = height)) + geom_point() +
     theme_bw(base_size = 16) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + ggtitle(" Seedling Height by Cluster")
 
 ```
-
-#Mean plots
 ```{r}
-library("ggpubr")
-ggline(dense, x = "site.name", y = "Height..cm.", color = "site.name", add = c("mean_se", "jitter"),  ylab = "Height (cm)", xlab = "Cluster", labcol = "CLuster")
+
+ggline(dense, x = "site.name", y = "height", color = "site.name", add = c("mean_se", "jitter"),  ylab = "Height (cm)", xlab = "Cluster", labcol = "CLuster")
 
 ```
-
-#height means by cluster
 ```{r}
-tapply(compiled$Height..cm., compiled$SITE.NAME, summary)
+tapply(compiled$height, compiled$site.name, summary)
 ```
-
-
-Another random interesting plot type:
 ```{r}
-#install.packages("ggridges")
-library(ggridges)
-#ridgeplot
 ggplot(POTR, aes(x = height, y = site.name, fill=site.name)) +
   geom_density_ridges() +
   xlab("Height cm") +
