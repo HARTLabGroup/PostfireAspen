@@ -36,7 +36,10 @@ pacman::p_load(
   patchwork, # multiple figures
   readxl, # read excel files
   ggpubr, # plotting
-  ggridges # plotting
+  ggridges, # plotting
+  lme4, # generalized linear mixed effects models
+  effects, # plotting effects from glmms
+  DHARMa # evaluating residuals from glmms
 ) 
 
 
@@ -67,10 +70,22 @@ options(scipen=999)
 dir.create(here("Data/"), showWarnings = FALSE)
 dir.create(here("Results/"), showWarnings = FALSE)
 ```
+# Overview
+## Research questions
+(1) Where do aspen seedlings establish?
+(2) What landscape factors explain aspen seedling density?
+(3) What landscape and microsite factors, including competition with suckers, influence aspen seedling occurrence?
+(4) What landscape and microsite factors, including competition with suckers, influence aspen seedling height?
 
-# Import data
+## Hypotheses
+
+# Methods
+## Study area
+
+## Field methods
+## Data analysis
+### Import data
 ```{r importData}
-
 POTR <- read_excel(here("Data", "POTR Seedling Data-2.xlsx"))
 #str(POTR)
 colnames(POTR) <- tolower(c("SITE.NAME", "SITE.NO", "TRANSECT", "SUBPLOT", "HEIGHT", "SUBSTRATE", "SM.TOPO", "LG.TOPO", "LG.CWD", "SM.CWD","SUCKER.DIST", "CC", "BROWSE"))
@@ -89,26 +104,56 @@ colnames(REGEN) <- tolower(c("SITE.NO", "TRANSECT", "POINT", "ABLA", "PICO", "PI
 #POTR$height <- POTR$Height..cm.
 ```
 
-# Data wrangling
-
+### Data wrangling
 ```{r}
 compiled <- merge(POTR, POTR_site, by = "site.no")
-
-# 
-
-compiled2 <- REGEN %>% group_by(site.no) %>% summarize_at(.vars=vars(abla:potr.seed), .fun=sum)
-compiled2 <- merge(compiled2, 
-POTR_site,  by = "site.no")
-compiled2$potr.seed01 <- ifelse(compiled2$potr.seed>0, 1,0)
-
-compiled.regen <- compiled.regen %>% group_by(site.no, transect)
-
-#compiled
+#compiled2 <- REGEN %>% group_by(site.no) %>% summarize_at(.vars=vars(abla:potr.seed), .fun=sum)
+compiled.REGEN <- merge(REGEN, 
+POTR_site,  by = c("site.no"))
+compiled.REGEN$potr.seed01 <- ifelse(compiled.REGEN $potr.seed>0, 1,0)
 ```
 
-# Data exploration
+### Notes 
+- what are negative values of slope?
 
 
+### Where do aspen seedlings establish?
+
+To understand how site conditions influence seedling recruitment, we
+first modeled the presence/absence of successful seedling germination
+using a generalized linear mixed effect model (GLMM) with a
+binomial-distributed error structure, a logit link, and random
+intercepts of site identity. Next, to understand how site conditions
+influence the count of seedlings present at each block, we modeled the
+total number of seedlings that germinated at block where successful
+germination occurred using a GLMM. To account for the high variability
+in the count of seedlings per block, we used a negative binomial GLMM
+and again included a random intercept of site identity.
+
+```{r}
+
+occurrence.mod.cluster<- glmer(potr.seed01 ~ scale(elevation) + scale(aspect)+ (1|cluster), family=binomial, data=compiled.REGEN)
+occurrence.mod.cluster.site<- glmer(potr.seed01 ~ scale(elevation) + (1|cluster) + (1|site.no:cluster), family=binomial, data=compiled.REGEN)
+occurrence.mod.cluster.site.transect<- glmer(potr.seed01 ~ scale(elevation) + scale(slope) + scale(aspect) + (1|cluster) + (1|site.no:cluster) + (1|transect:site.no:cluster), family=binomial, data=compiled.REGEN)
+
+occurrence.mod.cluster%>% AIC()
+occurrence.mod.cluster.site%>% AIC()
+occurrence.mod.cluster.site.transect%>% AIC()
+
+occurrence.mod.cluster.site.transect%>% predictorEffects(c('elevation', 'slope', 'aspect'), xlevels=100) %>% plot()
+e.moist<- predictorEffect("elevation",occurrence.mod, xlevels=100) %>% as.data.frame()
+
+library(DHARMa)
+modfinal.binomial.simout <- simulateResiduals(occurrence.mod.cluster.site.transect)
+plot(modfinal.binomial.simout)
+```
+
+
+```{r}
+ggplot(compiled2, aes(y=elevation, x=factor(potr.seed01)))+geom_boxplot()
+
+ggplot(compiled2, aes(y=slope, x=factor(potr.seed01)))+geom_boxplot()
+```
 
 ## Seedling height by cluster
 ```{r}
