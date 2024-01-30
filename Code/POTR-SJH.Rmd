@@ -1,8 +1,6 @@
 ---
-title: "Site selection for postfire aspen project"
-author: "Sarah Carter and Sarah Hart"
-email: "Sarah.Hart@colostate.edu"
-date: "June 16, 2022"
+title: "Preliminary analyses of the effects of landscape variables on aspen seedling occurrence, density, and height."
+date: "January 30, 2024"
 output: 
   bookdown::html_document2:
     code_folding: hide
@@ -17,6 +15,9 @@ citationcolor: blue
 csl: "`r here:::here('ecology.csl')`"
 editor_options: 
   chunk_output_type: console
+  markdown: 
+    wrap: 72
+bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -35,13 +36,16 @@ pacman::p_load(
   ggplot2, # figures
   patchwork, # multiple figures
   readxl, # read excel files
-  ggpubr, # plotting
   ggridges, # plotting
+  ggcorrplot, # plotting
   lme4, # generalized linear mixed effects models
   effects, # plotting effects from glmms
-  DHARMa # evaluating residuals from glmms
+  DHARMa, # evaluating residuals from glmms
+  sjPlot, # extract glmm fit 
+  stars, # raster data (new pkg)
+  sf, # spatial data (new pkg)
+  kableExtra # tables in markdown
 ) 
-
 
 # Set custom plotting theme
 theme_new <- function(base_size = 9,base_family = "Helvetica"){
@@ -70,434 +74,477 @@ options(scipen=999)
 dir.create(here("Data/"), showWarnings = FALSE)
 dir.create(here("Results/"), showWarnings = FALSE)
 ```
-# Overview
+
+# Introduction
+
 ## Research questions
-(1) Where do aspen seedlings establish?
-(2) What landscape factors explain aspen seedling density?
-(3) What landscape and microsite factors, including competition with suckers, influence aspen seedling occurrence?
-(4) What landscape and microsite factors, including competition with suckers, influence aspen seedling height?
+
+1.  Where do aspen seedlings occur?
+
+2.  Given seedling occurrence, what landscape factors explain aspen
+    seedling density the number of stocked subplots (i.e. \>=1 seedling
+    per subplot)?
+
+3.  What landscape factors influence seedling height?
+
+4.  What landscape and microsite factors, including competition with
+    suckers, influence aspen seedling occurrence?
+
+5.  What landscape and microsite factors, including competition with
+    suckers, influence aspen seedling height?
 
 ## Hypotheses
 
-# Methods
+# Methods and Results
+
+*Note that you'll want to separate your methods and results in your
+thesis, but here they're just shown together so you can follow the code
+a little more clearly*
+
 ## Study area
 
 ## Field methods
-## Data analysis
-### Import data
+
+### Sample sites
+
+### Plot design and data collection
+
 ```{r importData}
-POTR <- read_excel(here("Data", "POTR Seedling Data-2.xlsx"))
-#str(POTR)
-colnames(POTR) <- tolower(c("SITE.NAME", "SITE.NO", "TRANSECT", "SUBPLOT", "HEIGHT", "SUBSTRATE", "SM.TOPO", "LG.TOPO", "LG.CWD", "SM.CWD","SUCKER.DIST", "CC", "BROWSE"))
+POTR <- read_excel(here("Data", "POTR Seedling Data-2.xlsx")) # Read in data describing the local factors 
+colnames(POTR) <- tolower(c("SITE.NAME", "SITE.NO", "TRANSECT", "SUBPLOT", "HEIGHT", "SUBSTRATE", "SM.TOPO", "LG.TOPO", "LG.CWD", "SM.CWD","SUCKER.DIST", "CC", "BROWSE")) # change column names 
+POTR <- mutate_if(POTR, is.character, as.factor) # change any character strings to factor
+POTR$site.no <- as.factor(POTR$site.no) # change site no to factor
+POTR$browse <- as.factor(POTR$browse) # change browse category to factor
 
-POTR_site <- read_excel(here("Data", "POTR SITE DATA.xlsx"))
-#str(POTR_site)
-colnames(POTR_site) <- tolower(c("SITE.NO", "CLUSTER", "UTM.E", "UTM.N", "ELEVATION", "SLOPE", "ASPECT", "TOPO", "TRANS.A.DIR", "TRANS.B.DIR", "LIVE.DIST", "DEAD.DIST"))
+POTR_site <- read_excel(here("Data", "POTR SITE DATA.xlsx")) # Read in data describing landscape factors
+colnames(POTR_site) <- tolower(c("SITE.NO", "CLUSTER", "UTM.E", "UTM.N", "ELEVATION", "SLOPE", "ASPECT", "TOPO", "TRANS.A.DIR", "TRANS.B.DIR", "LIVE.DIST", "DEAD.DIST"))  # change column names 
+POTR_site <- mutate_if(POTR_site, is.character, as.factor) # change any character strings to factor
+POTR_site$site.no <- as.factor(POTR_site$site.no) # change site no to factor
+POTR_site$abs.slope <- abs(POTR_site$slope) # calculate the absolute value of slope
+POTR_site$aspect.rad <- POTR_site$aspect*pi/180 # convert degrees to radians
+POTR_site$aspect.rad.folded <-  abs(pi - abs(POTR_site$aspect.rad - (5*pi/4))) # calculate folded aspect following McCune and Keon 2002
+POTR_site$aspect.rad.folded.sine <- sin(POTR_site$aspect.rad.folded) # calc sine transformation
 
-REGEN <- read_excel(here("Data", "ALL REGEN.xlsx"))
-#str(REGEN)
-colnames(REGEN) <- tolower(c("SITE.NO", "TRANSECT", "POINT", "ABLA", "PICO", "PIEN", "PIPO", "PSME", "POTR.sucker", "POTR.seed"))
-
-#rename variables because they are confusing 
-#POTR$site.name <- POTR$SITE.NAME
-#POTR$site.Number <- POTR$SITE..
-#POTR$height <- POTR$Height..cm.
+REGEN <- read_excel(here("Data", "ALL REGEN.xlsx")) # Read in data describing regeneration density per subplot
+colnames(REGEN) <- tolower(c("SITE.NO", "TRANSECT", "POINT", "ABLA", "PICO", "PIEN", "PIPO", "PSME", "POTR.sucker", "POTR.seed"))  # change column names 
+REGEN <- mutate_if(REGEN, is.character, as.factor) # change any character strings to factor
+REGEN$site.no <- as.factor(REGEN$site.no) # change site no to factor
 ```
 
-### Data wrangling
+In the field, we recorded distance from plot center to the nearest
+pre-fire live aspen. If distance exceeded 50 m, we measured the distance
+from plot center to the nearest aspen using a 10-m gridded map of aspen
+presence-absence for the study area produced by Cook et al. [in review].
+
+```{r calcAspenDist}
+# Download spatial data describing the extent of the Cameron Peak Fire
+if(!dir.exists(here("Data", "Spatial", "MTBS"))){
+  dir.create(here("Data", "Spatial", "MTBS"), showWarnings = FALSE)
+  temp <- here("Data", "Spatial", "MTBS","MTBS.zip")
+  download.file("https://edcintl.cr.usgs.gov/downloads/sciweb1/shared/MTBS_Fire/data/composite_data/burned_area_extent_shapefile/mtbs_perimeter_data.zip", temp)
+  unzip(temp, exdir=here("Data", "Spatial", "MTBS"))
+}
+
+# Download spatial data describing the extent of aspen
+if(!dir.exists(here("Data", "Spatial", "Aspen"))){
+  dir.create(here("Data", "Spatial", "Aspen"), showWarnings = FALSE)
+  temp <- here("Data", "Spatial", "Aspen","srme_skcv_distribution_binopt.tif")
+  download.file("https://drive.google.com/uc?export=download&id=16AsVr5yYzDuAuFW5qWXmLltXPtzDUyak", temp)
+}
+
+# Read in aspen presence/absence data
+aspen <- read_stars(here("Data", "Spatial", "Aspen", "srme_skcv_distribution_binopt.tif"))
+
+# Crop aspen data to the area near Cameron peak this speeds things up
+CameronPeak <- st_read(here("Data/Spatial/MTBS/mtbs_perims_DD.shp")) %>% # import fire perimeter data
+  filter(Incid_Name == "CAMERON PEAK") %>% # pull out just Cameron Peak
+  st_transform(st_crs(aspen)) %>% # transform geometry to match aspen
+  st_buffer(dist=5000) # buffer fire extent by 5 kilometers
+aspen <- aspen %>% st_crop(st_bbox(CameronPeak)) # crop aspen data to area in and surrounding Cameron Peak
+
+# Convert aspen data from raster to polygon
+aspen.p <- st_as_sf(aspen[1], as_points = FALSE, merge =TRUE) 
+aspen.p1 <- aspen.p %>%
+  filter(srme_skcv_distribution_binopt.tif==1) %>% # select only presence polygons
+  st_union() # combine presence polygons into one polygon
+st_write(aspen.p1, here("Data/Spatial/Aspen/aspen.shp"), append=F) # write to file
+
+# Convert site coordinates to spatial object
+POTR_site.sf <-  st_as_sf(POTR_site, coords = c("utm.e", "utm.n"), crs = "EPSG:32613") %>% st_transform(crs=st_crs(aspen))
+
+# Calculate distance of each site to edge of polygon
+POTR_site$geo.dist <- st_distance(POTR_site.sf, aspen.p1) %>% as.numeric()
+
+# Create new column (dist) that uses field distances when distance to the nearest tree was measured as <=50 m in the field and geospatial distance when it was estimated as >=51 m
+POTR_site$dist <- POTR_site$dead.dist
+POTR_site[POTR_site$dist>=51, "dist"] <- POTR_site[POTR_site$dist>=51, "geo.dist"]
+```
+
+```{r summarizeTransectData}
+# Calculate total number of seedlings per transect
+REGEN.transect <- REGEN %>% group_by(site.no,transect) %>% summarize_at(.vars=vars(abla:potr.seed), .fun=sum)
+
+# Determine if a plot is stocked (>=1 seedling)
+REGEN.stocking <- REGEN %>% mutate_if(is.numeric, ~1 * (. != 0)) # convert any values >=1 to 1
+
+# Calculate number of subplots with seedlings per transect
+REGEN.stocking <- REGEN.stocking %>% group_by(site.no,transect) %>% summarize_at(.vars=vars(abla:potr.seed), .fun=sum)
+
+# Combine transect level data frames
+REGEN.transect <- full_join(REGEN.transect, REGEN.stocking,by=c('site.no', 'transect'), suffix=c(".density", ".stocking"))
+
+# Create separate variable describing the presence and absence of aspen seedlings
+REGEN.transect$potr.seed01 <- ifelse(REGEN.transect$potr.seed.density>0, 1,0) 
+REGEN.transect$potr.seedpa <- ifelse(REGEN.transect$potr.seed01==1, "presence","absence") %>% as.factor()
+
+# Create separate variable describing the presence and absence of aspen suckers
+REGEN.transect$potr.sucker01 <- ifelse(REGEN.transect$potr.sucker.density>0, 1,0) 
+REGEN.transect$potr.suckerpa <- ifelse(REGEN.transect$potr.sucker01==1, "presence","absence") %>% as.factor()
+```
+
+```{r combinedData}
+# Combine site and transect level data
+compiled.site.transect <- right_join(POTR_site,REGEN.transect, by = "site.no") # combine site and seedling data
+# Combine site and transect level data
+compiled.site.seedling <- right_join(POTR_site, POTR, by = "site.no") %>% na.omit()
+
+```
+
+For predictor variables, we tested (1) elevation, (2) slope, (3)
+sine-transformed folded aspect, and (4) distance to pre-fire mature
+aspen.
+
+```{r setPredictorVarz}
+select.continuous.varz <- c('elevation', 'abs.slope', 'aspect.rad.folded.sine', 'dist')
+
+select.continuous.varz.names <- c(
+  `elevation`="elevation (m)",
+  `abs.slope`="slope (degrees)",
+  `aspect.rad.folded.sine`="sine-transformed folded aspect",
+  `dist` = "distance to mature aspen (m)"
+)
+```
+
+## Data analysis
+
+### Where do aspen seedlings occur?
+
+#### Occurrence
+
+To understand how landscape factors influence the occurrence of aspen
+seedlings, we first modeled the presence/absence of aspen seedlings at
+the transect level using a generalized linear mixed effect model (GLMM)
+with a binomial-distributed error structure, a logit link, and a random
+intercept of site identity nested within sample cluster.
+
+##### Select variables
+
+```{r fitOccurrence}
+# first fit model with only random effects
+occurrence.mod <- glmer(potr.seed01 ~ (1|site.no:cluster), family=binomial, data=compiled.site.transect) 
+
+# fit models with different combinations of predictors
+modz <- list(
+  update(occurrence.mod, ~ . + scale(dist)),
+  update(occurrence.mod, ~ . + scale(elevation)),
+  update(occurrence.mod, ~ . + scale(abs.slope)),
+  update(occurrence.mod, ~ . + scale(aspect.rad.folded.sine)),
+  update(occurrence.mod, ~ . + scale(dist)*scale(elevation)),
+  update(occurrence.mod, ~ . + scale(dist)*scale(abs.slope)),
+  update(occurrence.mod, ~ . + scale(dist)*scale(aspect.rad.folded.sine))
+)
+
+# compile some summary statistics including AIC, likelihood ratio test statistic and p-value
+occurrence.mod.summary <- do.call(rbind,lapply(lapply(modz, drop1, test="Chisq"), FUN=function(x){return(data.frame(variable=paste(row.names(x)[-1], collapse="+"), AIC=x$AIC[1], LRT=x$LRT[2], p=x[2,"Pr(Chi)"]))})) 
+
+occurrence.mod.summary %>%  kable(digits=c(0,0,2, 3), caption="Summary statistics for several models of aspen seedling occurrence") %>% kable_styling() # note this just makes the table print pretty in html format. if you just want to look at the table without knitting the whole document you can just print the object
+```
+
+##### Fit best model
+
+*A common approach to selecting the best model given a set of candidate
+models is to use the Akaike Information Criterion (AIC). AIC
+incorporates both the number or variables, which generally improves
+model fit but increases model complexity, and the maximum likelihood
+estimate of the model, which describes how well the model reproduces the
+data.*
+
+```{r fitOccurrenceFinal}
+occurrence.mod.final <- glmer(potr.seed01 ~ scale(dist)*scale(elevation) + (1|site.no:cluster), family=binomial, data=compiled.site.transect)
+
+tab_model(occurrence.mod.final)
+```
+
+##### Check residuals for best model
+
+We used DHARMa package [@DHARMa] to test model residuals.
+
+*Here if the data fits the model then the QQ plot (left) should show a
+straight line and there should be no pattern between the residual and
+the model predictions (right plot).*
+
+```{r checkOccurrenceFinal, fig.width=7, fig.height=4, out.width="100%", fig.cap="Patterns in simulated residuals from the best fitting model of seedling occurrence."}
+occurrence.mod.final <- glmer(potr.seed01 ~ scale(dist):scale(elevation) + (1|site.no:cluster), family=binomial, data=compiled.site.transect)
+modfinal.binomial.simout <- simulateResiduals(occurrence.mod.final) # calculate randomized quantile residuals 
+plot(modfinal.binomial.simout) 
+# Read here for information: https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html#binomial-data
+```
+
+##### Plot model effects for best model
+
+To visualize the effect of predictor variables on the response, we
+calculate the estimated marginal mean for the response while accounting
+for other fixed and random effects using the Effects package
+[@effects-2].
+
+```{r effectsOccurrence, fig.cap="The estimated marginal mean probabiliy of seedling occurrence in transect by elevation and distance to pre-fire aspen. Shaded areas show the 95% confidence interval.", out.width="60%", fig.height=2.5, fig.width=3}
+effects.occurrence <- Effect(c("elevation","dist"), occurrence.mod.final, xlevels=list(elevation=seq(from=2400, to=3400, by=250), dist=seq(0,1000, by=250))) %>% as.data.frame()
+   
+gg.elevation <- ggplot(data=effects.occurrence)+geom_line(aes(x=elevation, y=fit, col=factor(dist)))+geom_ribbon(aes(x=elevation,ymin=lower,ymax=upper, fill=factor(dist)),alpha=0.2)+geom_point(data=compiled.site.transect, aes(x=elevation, y=potr.seed01))+xlab("elevation (m)")+ylab("Probabilty of\nseedling presence")+theme(legend.position="bottom")
+gg.elevation
+```
+
+#### Count
+
+To understand how site conditions influence the count of seedlings
+present, we modeled the total number of seedlings present within a plot
+given occurrence. To account for the high variability in the count of
+seedlings, we used a negative binomial GLMM and again included a random
+intercept of site identity nested within sample cluster.
+
+##### Select variables
+
+```{r fitCount}
+count.mod <- glmer.nb(potr.seed.density ~  (1|site.no:cluster), data=compiled.site.transect[compiled.site.transect$potr.seed.density>=1,])
+
+modz <- list(
+  update(count.mod, ~ . + scale(dist)),
+  update(count.mod, ~ . + scale(elevation)),
+  update(count.mod, ~ . + scale(abs.slope)),
+  update(count.mod, ~ . + scale(aspect.rad.folded.sine)),
+  update(count.mod, ~ . + scale(dist)*scale(elevation)),
+  update(count.mod, ~ . + scale(dist)*scale(abs.slope)),
+  update(count.mod, ~ . + scale(dist)*scale(aspect.rad.folded.sine))
+)
+
+count.mod.summary <- do.call(rbind,lapply(lapply(modz, drop1, test="Chisq"), FUN=function(x){return(data.frame(variable=paste(row.names(x)[-1], collapse="+"), AIC=x$AIC[1], LRT=x$LRT[2], p=x[2,"Pr(Chi)"]))})) 
+
+count.mod.summary %>%  kable(digits=c(0,0,2, 3), caption="Summary statistics for several models of aspen seedling density") %>% kable_styling() # note this just makes the table print pretty in html format. if you just want to look at the table without knitting the whole document you can just print the object
+```
+
+##### Fit best model
+
+```{r fitCountFinal}
+count.mod.final <-  glmer.nb(potr.seed.density ~ scale(dist) + (1|site.no:cluster), data=compiled.site.transect[compiled.site.transect$potr.seed.density>=1,])
+
+tab_model(count.mod.final)
+```
+
+##### Check residuals for best model
+
+We used DHARMa package [@DHARMa] to test model residuals.
+
+*Here if the data fits the model then the QQ plot (left) should show a
+straight line and there should be no pattern between the residual and
+the model predictions (right plot)*
+
+```{r checkCountFinal, fig.width=7, fig.height=4, out.width="100%", fig.cap="Patterns in simulated residuals from the best fitting model of the total number of aspen seedling present within a transect given occurrence."}
+count.mod.final.simout <- simulateResiduals(count.mod.final) # calculate randomized quantile residuals 
+plot(count.mod.final.simout) 
+# Read here for information: https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html#binomial-data
+```
+
+##### Plot model effects for best model
+
+To visualize the effect of predictor variables on the response, we
+calculate the estimated marginal mean for the response while accounting
+for other fixed and random effects using the Effects package [@effects].
+
+```{r effectsCount, fig.cap="The estimated marginal mean number of seedling in a transect by distance to pre-fire aspen. Shaded areas show the 95% confidence interval", out.width="60%", fig.height=2.5, fig.width=3}
+effects.count <- Effect("dist", count.mod.final, xlevels=list(dist=seq(0,1000, by=500))) %>% as.data.frame()
+  
+gg.count <- ggplot()+geom_line(data=effects.count, aes(x=dist, y=fit))+geom_ribbon(data=effects.count, aes(x=dist,ymin=lower,ymax=upper),alpha=0.2)+geom_point(data=compiled.site.transect[compiled.site.transect$potr.seed.density>=1,], aes(x=dist, y=potr.seed.density, col=cluster))+xlab("distance (m)")+ylab("Seedling count")
+gg.count
+```
+
+#### Stocking
+
+To understand how site conditions influence the count of seedlings
+present, we modeled the total number of seedlings present within a plot
+given occurrence. To account for the high variability in the count of
+seedlings, we used a negative binomial GLMM.
+
+##### Select variables
+
+```{r fitStocking}
+stocking.mod <- glmer.nb(potr.seed.stocking ~  (1|site.no:cluster), data=compiled.site.transect[compiled.site.transect$potr.seed.density>=1,])
+
+modz <- list(
+  update(stocking.mod, ~ . + scale(dist)),
+  update(stocking.mod, ~ . + scale(elevation)),
+  update(stocking.mod, ~ . + scale(abs.slope)),
+  update(stocking.mod, ~ . + scale(aspect.rad.folded.sine)),
+  update(stocking.mod, ~ . + scale(dist)*scale(elevation)),
+  update(stocking.mod, ~ . + scale(dist)*scale(abs.slope)),
+  update(stocking.mod, ~ . + scale(dist)*scale(aspect.rad.folded.sine))
+)
+
+stocking.mod.summary <- do.call(rbind,lapply(lapply(modz, drop1, test="Chisq"), FUN=function(x){return(data.frame(variable=paste(row.names(x)[-1], collapse="+"), AIC=x$AIC[1], LRT=x$LRT[2], p=x[2,"Pr(Chi)"]))})) 
+stocking.mod.summary%>%  kable(digits=c(0,0,2, 3), caption="Summary statistics for several models of the number of stocked subplots given seedling occurrence.") %>% kable_styling() # note this just makes the table print pretty in html format. if you just want to look at the table without knitting the whole document you can just print the stocking.mod.summary object
+
+
+```
+
+##### Fit best model
+
+```{r fitStockingFinal}
+stocking.mod.final <-  glmer.nb(potr.seed.stocking ~ scale(dist) + (1|site.no:cluster), data=compiled.site.transect[compiled.site.transect$potr.seed.density>=1,])
+tab_model(stocking.mod.final)
+```
+
+##### Check residuals for best model
+
+We used DHARMa package [@DHARMa] to test model residuals.
+
+*Here if the data fits the model then the QQ plot (left) should show a
+straight line and there should be no pattern between the residual and
+the model predictions (right plot).*
+
+```{r checkStockingFinal, fig.width=7, fig.height=4, out.width="100%", fig.cap="Patterns in simulated residuals from the best fitting model of the number of stocked subplots, given seedling presence."}
+stocking.mod.final.simout <- simulateResiduals(stocking.mod.final) # calculate randomized quantile residuals 
+plot(stocking.mod.final.simout) 
+# Read here for information: https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html#binomial-data
+```
+
+##### Plot model effects for best model
+
+To visualize the effect of predictor variables on the response, we
+calculate the estimated marginal mean for the response while accounting
+for other fixed and random effects using the Effects package
+[\@effects].
+
+```{r effectsStocking, fig.cap="The estimated marginal mean the number of stocked plots in a transect given seedling presence by distance to pre-fire aspen. Shaded areas show the 95% confidence interval.", out.width="60%", fig.height=2.5, fig.width=3}
+effects.stocking <- Effect("dist", stocking.mod.final, xlevels=list(dist=seq(0,1000, by=500)), residuals = TRUE) %>% as.data.frame()
+  
+gg.stocking <- ggplot()+geom_line(data=effects.stocking, aes(x=dist, y=fit))+geom_ribbon(data=effects.stocking, aes(x=dist,ymin=lower,ymax=upper),alpha=0.2)+geom_point(data=compiled.site.transect[compiled.site.transect$potr.seed.density>=1,], aes(x=dist, y=potr.seed.stocking))+xlab("distance (m)")+ylab("Count of subplots with seedlings present")
+gg.stocking
+```
+
+#### Seedling height
+
+To understand how site conditions influence the count of seedlings
+present, we modeled the total number of seedlings present within a plot
+given occurrence. To account for the high variability in the count of
+seedlings, we used a negative binomial GLMM.
+
+##### Select variables
+
+```{r fitHeight}
+height.mod <- lmer(log(height)~  (1|site.no:cluster), data= compiled.site.seedling)
+
+modz <- list(
+  update(height.mod, ~ . + scale(elevation)),
+  update(height.mod, ~ . + scale(abs.slope)),
+  update(height.mod, ~ . + scale(aspect.rad.folded.sine))
+)
+
+height.mod.summary <- do.call(rbind,lapply(lapply(modz, drop1, test="Chisq"), FUN=function(x){return(data.frame(variable=paste(row.names(x)[-1], collapse="+"), AIC=x$AIC[1], LRT=x$LRT[2], p=x[2,"Pr(Chi)"]))})) 
+height.mod.summary %>%  kable(digits=c(0,0,2, 3), caption="Summary statistics for several models of aspen seedling height") %>% kable_styling() # note this just makes the table print pretty in html format. if you just want to look at the table without knitting the whole document you can just print the height.mod.summary object
+
+```
+
+##### Fit best model
+
+```{r fitHeightFinal}
+height.mod.final <-  lmer(log(height)~ browse+scale(elevation)+browse*scale(elevation)+(1|site.no:cluster), data= compiled.site.seedling)
+tab_model(height.mod.final)
+```
+
+##### Check residuals for best model
+
+We used DHARMa package [@DHARMa] to test model residuals.
+
+*Here if the data fits the model then the QQ plot (left) should show a
+straight line and there should be no pattern between the residual and
+the model predictions (right plot).*
+
+```{r checkHeightFinal, fig.width=7, fig.height=4, out.width="100%", fig.cap="Patterns in simulated residuals from the best fitting model of seedling height."}
+height.mod.final.simout <- simulateResiduals(height.mod.final) # calculate randomized quantile residuals 
+plot(height.mod.final.simout) 
+# Read here for information: https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
+```
+
+*Note this doesn't look like it fits super well. This may be because we
+haven't included all of the relevant variables.*
+
+##### Plot model effects for best model
+
+To visualize the effect of predictor variables on the response, we
+calculate the estimated marginal mean for the response while accounting
+for other fixed and random effects using the Effects package
+[\@effects].
+
+```{r effectsHeight, fig.cap="The estimated marginal mean seedling height by elevation. Shaded areas show the 95% confidence interval.",out.width="60%", fig.height=2.5, fig.width=3}
+effects.height <- Effect(c("elevation"), height.mod.final, xlevels=list(elevation=seq(from=2400, to=3400, by=100), dist=seq(0,1000, by=500)), residuals = TRUE) %>% as.data.frame()
+   
+gg.height <- ggplot()+geom_line(data=effects.height, aes(x=elevation, y=fit))+geom_ribbon(data=effects.height, aes(x=elevation,ymin=lower,ymax=upper),alpha=0.2)+geom_point(data=compiled.site.seedling, aes(x=elevation, y=log(height)))+xlab("elevation (m)")+ylab("Log of seedling height (cm)")
+gg.height
+```
+
+# Next steps
+
+1.  Decide on a set of candidate models for each response variable
+2.  Decide whether we should be estimating distance to aspen using the
+    distance to live aspen or pre-fire aspen. From a seed availability
+    perspective it probably makes more sense to think about live aspen.
+3.  Think through whether or not all of these relationships make sense.
+    It could help here to create some more supplemental plots.
+
+# Supplemental materials
+
+*Here are just some supplemental exploratory plots I made of your data.
+Sorry, this code isn't annotated!*
+
+## Exploratory plots
+
 ```{r}
-compiled <- merge(POTR, POTR_site, by = "site.no")
-#compiled2 <- REGEN %>% group_by(site.no) %>% summarize_at(.vars=vars(abla:potr.seed), .fun=sum)
-compiled.REGEN <- merge(REGEN, 
-POTR_site,  by = c("site.no"))
-compiled.REGEN$potr.seed01 <- ifelse(compiled.REGEN $potr.seed>0, 1,0)
+compiled.site.transect %>%
+  select(select.continuous.varz) %>% 
+  cor(use="pairwise.complete.obs") %>% 
+  ggcorrplot(hc.order = T, lab=T, lab_size=3, tl.cex=9)
 ```
 
-### Notes 
-- what are negative values of slope?
-
-
-### Where do aspen seedlings establish?
-
-To understand how site conditions influence seedling recruitment, we
-first modeled the presence/absence of successful seedling germination
-using a generalized linear mixed effect model (GLMM) with a
-binomial-distributed error structure, a logit link, and random
-intercepts of site identity. Next, to understand how site conditions
-influence the count of seedlings present at each block, we modeled the
-total number of seedlings that germinated at block where successful
-germination occurred using a GLMM. To account for the high variability
-in the count of seedlings per block, we used a negative binomial GLMM
-and again included a random intercept of site identity.
+### Relationships between predictor and cluster
 
 ```{r}
-
-occurrence.mod.cluster<- glmer(potr.seed01 ~ scale(elevation) + scale(aspect)+ (1|cluster), family=binomial, data=compiled.REGEN)
-occurrence.mod.cluster.site<- glmer(potr.seed01 ~ scale(elevation) + (1|cluster) + (1|site.no:cluster), family=binomial, data=compiled.REGEN)
-occurrence.mod.cluster.site.transect<- glmer(potr.seed01 ~ scale(elevation) + scale(slope) + scale(aspect) + (1|cluster) + (1|site.no:cluster) + (1|transect:site.no:cluster), family=binomial, data=compiled.REGEN)
-
-occurrence.mod.cluster%>% AIC()
-occurrence.mod.cluster.site%>% AIC()
-occurrence.mod.cluster.site.transect%>% AIC()
-
-occurrence.mod.cluster.site.transect%>% predictorEffects(c('elevation', 'slope', 'aspect'), xlevels=100) %>% plot()
-e.moist<- predictorEffect("elevation",occurrence.mod, xlevels=100) %>% as.data.frame()
-
-library(DHARMa)
-modfinal.binomial.simout <- simulateResiduals(occurrence.mod.cluster.site.transect)
-plot(modfinal.binomial.simout)
+compiled.site.transect %>%
+  select(c("cluster",select.continuous.varz)) %>%     pivot_longer(!cluster) %>%
+  ggplot(aes(y=value, x=cluster))+geom_boxplot()+geom_jitter(width=0.25, size=0.5, col="blue3")+facet_wrap(.~name, scales="free_y", nrow=2, labeller=as_labeller(select.continuous.varz.names))+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
+### Relationships between response and predictor
 
 ```{r}
-ggplot(compiled2, aes(y=elevation, x=factor(potr.seed01)))+geom_boxplot()
-
-ggplot(compiled2, aes(y=slope, x=factor(potr.seed01)))+geom_boxplot()
-```
-
-## Seedling height by cluster
-```{r}
-#dotplot height by cluster
-ggplot(compiled,aes(x=site.name,y=height, col = height)) + geom_point() + 
-    xlab("Site Cluster Name") + 
-    ylab(expression(paste("Height (cm)"))) +
-    theme_bw(base_size = 16) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + ggtitle(" Seedling Height by Cluster")
-```
-```{r}
-#boxplot height by cluster
-ggplot(POTR, aes(x=site.name, y=height)) + 
-  geom_boxplot() +
-  xlab("Site Cluster") +
-  ylab(expression(paste("Height (cm)"))) +
-  ggtitle("Seedling Height by Cluster")
-
-```
-```{r}
-#histogram counts
-count <- count(compiled, site.name)
-count
-
-#filter for seedling density
-dense <- compiled %>% filter(site.name == "CAM"| site.name == "LONG"| site.name == "MONTY"| site.name == "RAWAH" | site.name == "SNOW")
-
-#height by cluster for dense clusters 
-ggplot(dense,aes(x=site.name,y=height, col = height)) + geom_point() + 
-    xlab("Site Cluster Name") + 
-    ylab(expression(paste("Height cm"))) +
-    theme_bw(base_size = 16) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + ggtitle(" Seedling Height by Cluster")
-
-```
-```{r}
-
-ggline(dense, x = "site.name", y = "height", color = "site.name", add = c("mean_se", "jitter"),  ylab = "Height (cm)", xlab = "Cluster", labcol = "CLuster")
-
-```
-```{r}
-tapply(compiled$height, compiled$site.name, summary)
-```
-```{r}
-ggplot(POTR, aes(x = height, y = site.name, fill=site.name)) +
-  geom_density_ridges() +
-  xlab("Height cm") +
-  ylab(expression(paste("Cluster Name"))) +
-  ggtitle("Seedling Height Distribution")
-```
-
-#data filtering for tests
-```{r}
-library(dplyr)
-
-#by cluster only
-snow <- compiled %>% filter(SITE.NAME =="SNOW")
-res <- compiled %>% filter(SITE.NAME =="RES")
-rawah <- compiled %>% filter(SITE.NAME =="RAWAH")
-monty <- compiled %>% filter(SITE.NAME =="MONTY")
-long <- compiled %>% filter(SITE.NAME =="LONG")
-lake <- compiled %>% filter(SITE.NAME =="LAKE")
-fish <- compiled %>% filter(SITE.NAME =="FISH")
-elkhorn <- compiled %>% filter(SITE.NAME =="ELKHORN")
-cr69 <- compiled %>% filter(SITE.NAME =="CR69")
-cam <- compiled %>% filter(SITE.NAME =="CAM")
-blue <- compiled %>% filter(SITE.NAME =="BLUE")
-
-#by substrate
-ash <- compiled %>% filter(Substrate == "A"| Substrate == "A/B"| Substrate == "A/L"| Substrate == "A/M")
-bryophyte <- compiled %>% filter(Substrate == "B"| Substrate == "B/A"| Substrate == "B/L"| Substrate == "B/M")
-litter <- compiled %>% filter(Substrate == "L"| Substrate == "L/A"| Substrate == "L/B"| Substrate == "L/M")
-mineral <- compiled %>% filter(Substrate == "M"| Substrate == "M/A"| Substrate == "M/B"| Substrate == "M/L")
-rock <- compiled %>% filter(Substrate == "R")
-wood <- compiled %>% filter(Substrate == "W")
-
-#by small topo
-cc <- compiled %>% filter(Small.Topo == "CC")
-cv <- compiled %>% filter(Small.Topo == "CV")
-f <- compiled %>% filter(Small.Topo == "F")
-s <- compiled %>% filter(Small.Topo == "S")
-
-#by large topo
-CC <- compiled %>% filter(Large.Topo == "CC")
-CV <- compiled %>% filter(Large.Topo == "CV")
-F <- compiled %>% filter(Large.Topo == "F")
-S <- compiled %>% filter(Large.Topo == "S")
-
-#by elevation groups
-high <- compiled %>% filter(Elevation > "3064")
-moderate <- compiled %>% filter(between(Elevation, 2713,3064))
-low <- compiled %>% filter(Elevation < "2713") 
-
-#by large CWD
-Lcwdp <- compiled %>% filter(Large.CWD == "1")
-Lcwda <- compiled %>% filter(Large.CWD == "0")
-
-#by small CWD
-Scwdp <- compiled %>% filter(Small.CWD == "1")
-Scwda <- compiled %>% filter(Small.CWD == "0")
-```
-
-#seedling count variable
-```{r}
-seedling_count_site <- count(compiled, compiled$SITE..)
-seedling_count_cluster <- count(compiled, compiled$SITE.NAME)
-```
-
-#method of deciding relative site elevation groups
-```{r}
-#median(POTR_site$Elevation)
-#min(POTR_site$Elevation)
-#max(POTR_site$Elevation)
-#summary(POTR_site$Elevation)
-```
-
-
-
-#substrate tallies and chi-sq
-```{r}
-count(ash)
-count(bryophyte)
-count(litter)
-count(mineral)
-count(rock)
-count(wood)
-
-substrate_counts = c(224, 256, 8, 55, 0, 4)
-#chisq.test(substrate_counts, correct = F)
-
-```
-
-#topo
-```{r}
-cc
-cv
-s
-f
-CC
-CV
-S
-F
-```
-
-
-#relationships between height and other variables
-```{r}
-#height and substrate
-kruskal.test(Height..cm. ~ Substrate, data = compiled)
-
-library(FSA)
-dunnTest(Height..cm. ~ Substrate, data = compiled, method = "holm")
-
-#height and cluster
-kruskal.test(Height..cm. ~ SITE.NAME, data = compiled)
-
-dunnTest(Height..cm. ~ SITE.NAME, data = compiled, method = "holm")
-
-#height and elevation
-
-kruskal.test(Height..cm. ~ Elevation, data = compiled)
-
-dunnTest(Height..cm. ~ Elevation, data = compiled, method = "holm")
-
-#small topo and height
-
-kruskal.test(Height..cm. ~ Small.Topo, data = compiled)
-
-dunnTest(Height..cm. ~ Small.Topo, data = compiled, method = "holm")
-
-#large topo and height
-
-kruskal.test(Height..cm. ~ Large.Topo, data = compiled)
-
-dunnTest(Height..cm. ~ Large.Topo, data = compiled, method = "holm")
-
-
-```
-
-#Kruskall tests with seedling count
-```{r}
-#count and cluster
-kruskal.test(seedling ~ SITE.NAME, data = compiled)
-
-dunnTest(seedling ~ SITE.NAME, data = compiled, method = "holm")
-
-#count and elevation
-
-kruskal.test(seedling ~ Elevation, data = compiled)
-
-dunnTest(seedling ~ Elevation, data = compiled, method = "holm")
-
-#count and topo 
-
-kruskal.test(seedling ~ Small.Topo, data = compiled)
-
-dunnTest(seedling ~ Small.Topo, data = compiled, method = "holm")
-
-
-#count topo and height
-
-kruskal.test(seedling ~ Large.Topo, data = compiled)
-
-dunnTest(seedling ~ Large.Topo, data = compiled, method = "holm")
-```
-
-
-#substrate
-```{r}
-ash
-bryophyte
-litter
-mineral
-rock
-wood
-```
-
-
-
-
-#elevation hist
-```{r}
-low
-moderate
-high
-hist(compiled$Elevation, breaks = 10, col = "light blue", main = "Elevation range of seedlings across all sites", xlab = "Elevation (m)", ylab = "Frequency")
-```
-#browse and CWD
-
-```{r}
-#by large CWD
-Lcwdp 
-Lcwda 
-
-#by small CWD
-Scwdp 
-Scwda 
-```
-
-#all regen
-```{r}
-#REGEN
-abla <- REGEN %>% filter(ABLA > "0")
-pico <- REGEN %>% filter(PICO > "0")
-pien <- REGEN %>% filter(PIEN > "0")
-pipo <- REGEN %>% filter(PIPO > "0")
-psme <- REGEN %>% filter(PSME > "0")
-
-sucker_regen <- REGEN %>% filter(POTR..sucker. > "0")
-
-abla
-pico
-pien
-pipo
-psme
-sucker_regen
-```
-
-#other aspen
-```{r}
-sucker <- compiled %>% filter(Sucker.Dist. < "51")
-parent <- compiled %>% filter(Distance.to.nearest.live.aspen < "51")
-orphan <- compiled %>% filter(Distance.to.nearest.dead.aspen < "51")
-
-parent
-orphan
-
-```
-#browse
-```{r}
-browse <- compiled %>% filter(Browse == "1")
-no_browse <- compiled %>% filter(Browse == "0")
-
-browse
-tapply(browse$Height..cm., browse$SITE.., summary)
+compiled.site.transect %>%
+  select(c("potr.seedpa", all_of(select.continuous.varz))) %>%
+  pivot_longer(!potr.seedpa) %>%
+  ggplot(aes(x=potr.seedpa, y=value))+geom_boxplot()+geom_point(position=position_jitter(width=0.1,height=0), col="blue3", size=0.5)+facet_wrap(.~name,scale="free_y", labeller=as_labeller(select.continuous.varz.names), nrow=2)+xlab("presence of seedlings")
 ```
 
 ```{r}
-compiled
-seedling_count_cluster
+compiled.site.transect %>% 
+  filter(potr.seedpa=="presence") %>%
+  select(c("potr.seed.density",select.continuous.varz)) %>%
+  pivot_longer(!potr.seed.density) %>%
+  ggplot(aes(y=log(potr.seed.density), x=value))+geom_point()+geom_smooth(method="lm")+facet_wrap(.~name, scales="free_x",labeller=as_labeller(select.continuous.varz.names), nrow=2)+ylab("log of total seedlings given presence")
 ```
 
 ```{r}
-TransectCount <- count(compiled, compiled$Transect)
+compiled.site.transect %>% 
+  filter(potr.seedpa=="presence") %>%
+  select(c("potr.seed.stocking",select.continuous.varz)) %>%
+  pivot_longer(!potr.seed.stocking) %>%
+  ggplot(aes(y=log(potr.seed.stocking), x=value))+geom_point()+geom_smooth(method="lm")+facet_wrap(.~name, scales="free_x",labeller=as_labeller(select.continuous.varz.names), nrow=2)+ylab("log of the number of stocked plots given presence")
 ```
 
-#how to set up binomial linear mixed model??
-```{r}
-n <- 38
-id <- seq(n)
-transect <- 1:2
-d <- expand.grid(id = id, transect=transect)
-set.seed(1)
-#sect <- sample(c("A", "B"), size = n, replace = TRUE)
-cluster <- sample(c("Blue", "Cam", "CR69", "Elkhorn", "Fish", "Lake", "Long", "Monty", "Rawah", "Res", "Snow"), size = n, replace = TRUE)
-d$cluster <- cluster[d$id]
-#d$sect <- sect[d$id]
-d <- d[order(d$id, d$transect),]
-rownames(d) <- NULL
-head(d, n = 76)
-```
-
-Probabilities of seedling presence:
-```{r}
-#Blue p = 
-#Cam
-#CR
-#Elk
-#Fish
-#Lake
-#Long
-#Monty
-#Rawah
-#Res
-#Snow
-
-
-
-d$clusterint <- interaction(d$cluster)
-probs <- c()
-```
-
-#Visualizing abnormality
-```{r}
-#hist(seedling_count_cluster$n)
-#hist(seedling_count$n)
-#hist(compiled$Height..cm.)
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# References
