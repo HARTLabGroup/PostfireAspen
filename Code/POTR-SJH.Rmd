@@ -71,8 +71,9 @@ options(ggplot2.continuous.colour="viridis")
 options(scipen=999)
 
 # Set directory structure for project
-dir.create(here("Data/"), showWarnings = FALSE)
-dir.create(here("Results/"), showWarnings = FALSE)
+dir.create(here("Data"), showWarnings = FALSE)
+dir.create(here("Data", "Spatial"), showWarnings = FALSE)
+dir.create(here("Results"), showWarnings = FALSE)
 ```
 
 # Introduction
@@ -499,6 +500,7 @@ gg.height
     perspective it probably makes more sense to think about live aspen.
 3.  Think through whether or not all of these relationships make sense.
     It could help here to create some more supplemental plots.
+4.  Think about how to fix up some of these plots
 
 # Supplemental materials
 
