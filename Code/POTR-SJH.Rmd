@@ -1,23 +1,20 @@
 ---
-title: "Preliminary analyses of the effects of landscape variables on aspen seedling occurrence, density, and height."
-date: "January 30, 2024"
+title: ""
+author: "Sarah V. Carter and Sarah J. Hart"
+email: "sarah.hart@colostate.edu"
+date: '`r format(Sys.time(), "%B %d, %Y")`'
 output: 
-  bookdown::html_document2:
-    code_folding: hide
-    toc: TRUE
-    toc_depth: 4
-    toc_float: TRUE
-    collapsed: TRUE
-    theme: spacelab
-    fig_caption: TRUE
-    number_sections: FALSE
+   officedown::rdocx_document:
+     reference_docx: Template.docx
+bibliography: references.bib
+csl: "`r here::here('citationstyle.csl')`"
+link-citations: true
+urlcolor: blue
+linkcolor: blue
 citationcolor: blue
-csl: "`r here:::here('ecology.csl')`"
 editor_options: 
-  chunk_output_type: console
   markdown: 
     wrap: 72
-bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -94,15 +91,41 @@ dir.create(here("Results"), showWarnings = FALSE)
 5.  What landscape and microsite factors, including competition with
     suckers, influence aspen seedling height?
 
-## Hypotheses
+We hypothesize: (A) seedlings will be more likely to occur when mature
+aspen are not locally present, as seedlings are likely to be out compete
+by root suckers [@kreider2021AspenSeedlingEstablishment]; (B) seedling
+occurrence and density will be greater at higher elevations where soil
+moisture is less limiting [@kreider2021AspenSeedlingEstablishment]; and
+(C) microtopography will influence the accumulation of seedlings, as
+concave microsite conditions will serve as a collection point for both
+wind dispersed seeds and essential resources including water
+[@kreider2021AspenSeedlingEstablishment].
 
-# Methods and Results
-
-*Note that you'll want to separate your methods and results in your
-thesis, but here they're just shown together so you can follow the code
-a little more clearly*
+# Methods
 
 ## Study area
+
+We surveyed aspen seedling regeneration across forests that burned in
+the 2020 Cameron Peak Fire located in Roosevelt National Forest,
+northern central Colorado (Fig. 1). The Cameron Peak Fire was the
+largest wildfire in Colorado history, with a total burn area of over
+84,544 hectares and approximately five months of burn time from August -
+December of 2020 (Swayze et al., 2021). The study area spans an
+elevation gradient from 2519 m to 3259 m and is characterized by a
+continental climate. However, the two spring periods following the fire
+were notably high in precipitation, improving growing season conditions
+for seedling establishment and survival in their most vulnerable stage
+(Swayze et al., 2021).
+
+Pre-fire forest composition and structure within the Cameron Peak burn
+scar varied with elevation. Lower elevation zones below 2800 m were
+characterized by dry and mesic montane forests, dominated by ponderosa
+pine (*Pinus ponderosa*), with lesser components of Douglas-fir
+(*Pseudotsuga menziesii*). Moderate and higher elevation stands between
+approximately 2800 – 3300 m were made up of mixed conifer subalpine
+forest, dominated by Engelmann spruce (*Picea engelmannii*), subalpine
+fir (*Abies lasiocarpa*), and lodgepole pine (*Pinus contorta*). (Swayze
+et al., 2021).
 
 ## Field methods
 
@@ -486,7 +509,7 @@ for other fixed and random effects using the Effects package
 [\@effects].
 
 ```{r effectsHeight, fig.cap="The estimated marginal mean seedling height by elevation. Shaded areas show the 95% confidence interval.",out.width="60%", fig.height=2.5, fig.width=3}
-effects.height <- Effect(c("elevation"), height.mod.final, xlevels=list(elevation=seq(from=2400, to=3400, by=100), dist=seq(0,1000, by=500)), residuals = TRUE) %>% as.data.frame()
+effects.height <- Effect(c("Elevation"), height.mod.final, xlevels=list(Elevation=seq(from=2400, to=3400, by=100), dist=seq(0,1000, by=500)), residuals = TRUE) %>% as.data.frame()
    
 gg.height <- ggplot()+geom_line(data=effects.height, aes(x=elevation, y=fit))+geom_ribbon(data=effects.height, aes(x=elevation,ymin=lower,ymax=upper),alpha=0.2)+geom_point(data=compiled.site.seedling, aes(x=elevation, y=log(height)))+xlab("elevation (m)")+ylab("Log of seedling height (cm)")
 gg.height
