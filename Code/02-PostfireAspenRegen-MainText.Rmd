@@ -14,7 +14,7 @@ linkcolor: blue
 citationcolor: blue
 editor_options: 
   markdown: 
-    wrap: 72
+    wrap: none
 ---
 
 ```{r setup, include=FALSE}
@@ -314,7 +314,7 @@ Fig.file <- here("Results", "Figures", "PostFireComposition.jpg")
 ggsave(filename=Fig.file, plot=gg.postfirecomp, width=5, height=3, units="in", dpi=300)
 ```
 
-## Environmental drivers of post-fire aspen seedling establishment
+s## Environmental drivers of post-fire aspen seedling establishment
 
 ```{r setPredictorVarz}
 select.continuous.varz <-  c("FoldedAspect", "Elevation", "Slope", "dist", "Herb")
