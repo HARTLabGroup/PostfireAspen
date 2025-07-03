@@ -1,8 +1,4 @@
 ---
-title: ""
-author: "Sarah V. Carter and Sarah J. Hart"
-email: "sarah.hart@colostate.edu"
-date: '`r format(Sys.time(), "%B %d, %Y")`'
 output: 
    officedown::rdocx_document:
      reference_docx: Template.docx
@@ -22,36 +18,44 @@ knitr::opts_chunk$set(message = FALSE, warning = FALSE, dpi = 600, progress = FA
 
 set.seed(513)
 options(repos = c(CRAN = "http://cran.rstudio.com"))
-options(timeout=60*60*2) #timeout downloads that last longer than an hour
+options(timeout=60*60*1) #timeout downloads that last longer than one hour
 options(na.action = "na.fail")  
 
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(
   here, # easy file structure
-  tidyverse, # data manipulation
-  tidymodels, 
   flextable, # tables
   ggplot2, # figures
   patchwork, # multiple figures
   readxl, # read excel files
-  ggridges, # plotting
   ggcorrplot, # plotting
-  GGally, # plotting
-  lme4, # generalized linear mixed effects models
-  pscl, # zero inflated models
+  glmmTMB, # ZINB
+  lmtest, # likelihood ratio tests
   MASS, # negative binomial glm
   effects, # plotting effects from glmms
   DHARMa, # evaluating residuals from glmms
-  sjPlot, # extract glmm fit
   performance, # model performance
+  marginaleffects, # predictor effects
   stars, # raster data 
   terra, # raster data
-  sf, # spatial data (new pkg)
-  DescTools # degrees to radian
+  sf, # spatial data
+  tidyverse, # data manipulation
+  magrittr, # pipe extention
+  remotes # install from github
 ) 
 
+### THIS CODE REQUIRES A MORE RECENT VERSION OF mclogit than is currently (23-06-2026) available on cran. This chunk will install the most recent release (0.9.10) from GitHub (if not already installed).
+if(!require("mclogit")){
+  remotes::install_github("melff/mclogit/pkg")
+}else{
+  if(!packageVersion("mclogit")=="0.9.10"){
+     remotes::install_github("melff/mclogit/pkg")
+  }
+}
+
+
 # Set custom plotting theme
-theme_new <- function(base_size = 9,base_family = "Helvetica"){
+theme_new <- function(base_size = 9,base_family = "Arial"){
   theme_classic(base_size = base_size, base_family = base_family) %+replace%
     theme(
       axis.line.x = element_line(color="black", size = 0.25),
@@ -78,13 +82,47 @@ dir.create(here("Data", "Spatial"), showWarnings = FALSE)
 dir.create(here("Results"), showWarnings = FALSE)
 ```
 
-# Introduction
+# Title: Moisture availability drives widespread regeneration of aspen seedlings following the Cameron Peak Fire, northwestern Colorado
 
-## Research questions
+## Authors: Sarah V. Carter^1^ and Sarah J. Hart^1^
+
+## Affiliations:
+
+1 - Department of Forest and Rangeland Stewardship, Colorado State University, 1472 Campus Delivery, Fort Collins, CO 80523, USA
+
+Corresponding author: Sarah J. Hart (email: sarah.hart\@colostate.edu)
+
+# Abstract [350 words]
+
+## Background
+
+Changing fire regimes and climate conditions have decreased post-fire conifer regeneration densities in many ecosystems across western North America. In the Southern Rocky Mountains, sparse post-fire regeneration of conifers has often been accompanied with abundant regeneration of quaking aspen, much of which is from vegetative resprouting. While aspen also produce abundant lightweight seed that can disperse great distances, we know considerably less about the patterns and drivers of post-fire establishment of aspen from seed. To understand the potential for severe fire to catalyze shifts to aspen dominated forests, we studied recently burned conifer-dominated forests and asked (1) how does post-fire regeneration of conifers and aspen vary? (2) how are aspen and conifer seedlings distributed within sites? and (3) how do site and microsite conditions influence aspen seedling establishment? To answer these questions, we conducted field surveys at 36 sites within the Cameron Peak Fire burn scar.
+
+## Results
+
+Two years following fire, we found widespread but highly variable establishment of aspen seedlings, despite the absence of aspen in the pre-fire stand. Aspen seedlings often outnumbered conifer seedlings and occurred within the same local neighborhood as conifer seedlings. Site and microsite factors influenced patterns of aspen seedling establishment. Aspen seedlings were more likely to occur at higher elevations, where they were often clustered within concave microsites with bryophyte substrates and near large coarse woody debris.
+
+## Conclusions
+
+# Keywords
+
+aspen, post-fire tree regeneration, seedling, *Populus tremuliodes,* sexual establishment
+
+# Background
+
+Over the past two decades, fires have become more frequent, larger, and more severe across the western United States (the West) [@iglesias2022USFiresBecame; @parks2020WarmerDrierFire], largely due to climate warming [@abatzoglou2016ImpactAnthropogenicClimate], more frequent human ignitions [@balch2017HumanstartedWildfiresExpand], and past land management practices [@allen2002EcologicalRestorationSouthwestern]. Not only is fire activity changing, numerous studies across the West have shown low post-fire regeneration densities, and even complete regeneration failure, is increasingly common [@stevens-rumann2019TreeRegenerationFollowing; @coop2020WildfireDrivenForestConversion]. Low post-fire regeneration has largely been attributed to increased fire behavior and severity. However, the effects of changing fire regimes and climate on post-fire recovery are mediated by species-specific traits that drive seed production, germination, and seedling survival and growth, as well as biotic interactions in early seral communities [@lloret2005FireRegenerativeSyndromes; @hansen2016ShiftingEcologicalFilters @davis2023ReducedFireSeverity]. Understanding the complexity of these ecological relationships is not only a central challenge for fire ecology but also has huge implications for society.
+
+There are three primary mechanisms that drive post-fire tree regeneration: vegetative resprouting, germination of seed from live tree residuals or the unburned forest, or germination of seeds from canopy seed banks. Notably, species may rely upon several of these strategies and the importance of each strategy may vary across populations. For example, lodgepole pine (*Pinus contorta*) produces both serotinous cones, which remain closed until heated and provide a post-fire canopy seedbank, and non-serotinous cones [@lotan1976ConeSerotinyFire]. Serotinous cones are often more common on older trees and at lower elevations, which both are associated with an increased risk of wildfire [@tinker1994LandscapescaleHeterogeneityLodgepole; @schoennagel2003InfluenceFireInterval]. Because an individual's regeneration traits in part reflect the system's history of wildfire, changes in disturbances regimes may compromise regeneration mechanisms and trigger shifts in forest structure and composition [@johnstone2010ChangesFireRegime].
+
+In forests of western North America, sparse post-fire regeneration of conifers has often been accompanied with abundant regeneration of quaking aspen [@johnstone2010ChangesFireRegime; @buma2011DisturbanceInteractionsCan; @kulakowski2013CompoundedDisturbancesSubalpine; @hart2019ExaminingForestResilience; @whitman2019ShortintervalWildfireDrought, @andrus2021FutureDominanceQuaking]. Unlike most conifers in these systems, which rely upon germination of seed from live trees or from canopy seed banks, aspen is capable of resprouting vegetatively from root systems that survive fire [@baker1925AspenCentralRocky]. While aspen often resprout vigorously following fire, quaking aspen also produce abundant lightweight seed that can facilitate shifts from conifer to aspen dominated forests in areas that lack aspen in the pre-fire stand [@johnstone2010ChangesFireRegime; @turner2003PostfireAspenSeedling]. Notably, the ensuing changes in plant-soil feedbacks, which lead to fuel complexes that promote low severity fire, along with continued vegetative regeneration of aspen can promote the persistence of an aspen-dominated community [@johnstone2020FactorsShapingAlternate; @walker2023ShiftsEcologicalLegacies]. While aspen seedling establishment is common across Canada, Alaska, and the Great Lakes and Northeast regions of the United States, across the western United States asexual reproduction from root suckering is understood to be far more common [@landhausser2019TammReviewSeedlingbased], likely due to trade-offs in growth, defense, and reproduction [@mock2012WidespreadTriploidyWestern; @derose2015CytotypeDifferencesRadial; @derose2022PolyploidyGrowthDefense]. Understanding the factors that drive aspen seedling establishment is central to predicting where fires may catalyze shifts from conifer to aspen dominance [@gill2017PopulusTremuloidesSeedling; @kreider2021LowdensityAspenSeedling].
+
+The potential for aspen to colonize new areas through aspen seedling recruitment depends on several factors. Aspen produce abundant light-weight seeds that can be transported several kilometers by strong winds [@turner2003PostfireAspenSeedling; @landhausser2019TammReviewSeedlingbased], nonetheless most seedling establishment occurs near live adult trees [@gill2017PopulusTremuloidesSeedling; @kreider2021AspenSeedlingEstablishment]. Given seed arrives, successful germination occurs on moist substrates, which are often located within microdepressions where water collects or near coarse woody debris that provides shade [@kreider2021AspenSeedlingEstablishment; @carter2024OccurrenceDistributionDriving]. In addition to adequate soil moisture, germinants require partial or direct sunlight to survive because aspen seeds lack an endosperm [@landhausser2019TammReviewSeedlingbased]. Thus seedling establishment is far more likely to occur at sites that were recently burned or harvested, where competition for light is limited [@mcilroy2020PostfireAspenPopulus]. While the root systems of young seedlings are developing and capable of accessing water close to the soil surface they are highly vulnerable to drought [@landhausser2019TammReviewSeedlingbased]. Finally, recruitment into the canopy is often limited by herbivory because aspen are a favored food of many ungulates, and continued browsing can severely limit aspen height growth [@romme1995AspenElkFire; @ripple2000HistoricAspenRecruitment]. While these filters are generally well understood, more research is necessary to understand when and where aspen seedling establishment will result in mature aspen forest [@gill2017InitialPostdisturbanceRegeneration].
+
+Within conifer-dominated forests that burn at high-moderate severity during the Cameron Peak Fire, we asked (1) how does post-fire regeneration of conifers and aspen vary? (2) how are aspen and conifer seedlings distributed within sites? and (3) how do site and microsite conditions influence aspen seedling establishment? For question 1, we hypothesized that tree regeneration patterns would be driven by regeneration traits. Specifically, we expected that regeneration of most conifers would be limited two years following fire, but lodgepole pine seedlings would be relatively abundant in stands where it was present pre-fire due to the species' capacity to produce serotinous cones. We also expected that aspen seedlings would be widespread, but at relatively low densities due to the species' capacity to produce abundant light-weight seeds. For question 2, we hypothesized that both aspen and conifer seedlings would be spatially clustered within plots with seedling establishment, due to local variation in microclimate, soils, and seed availability. For question 3, we hypothesized that aspen seedlings would be more likely to occur at high elevations, cooler and wetter aspects, with high conifer seedling densities Within sites with aspen seedlings. At the local scale, we hypothesized that microsite features associated with increased moisture availability, including the presence of CWD, concave topography, and substrates with high proportions of bryophyte cover.
 
 # Methods
 
-```{r importData}
+```{r importFieldData}
 # Site data
 site.dat <- read_excel(here("Data", "Postfire-Regen-Clean.xlsx"), sheet="Site", na="NA")
 site.dat <- mutate_if(site.dat, is.character, as.factor) # change any character strings to factor
@@ -115,132 +153,27 @@ overstory$Site <- as.factor(overstory$Site) # change site no to factor
 understory <- read_excel(here("Data", "Postfire-Regen-Clean.xlsx"), sheet="Understory", na="NA") 
 understory <- mutate_if(understory, is.character, as.factor) # change any character strings to factor
 understory$Site <- as.factor(understory$Site) # change site no to factor
-understory$Total <- understory %>% dplyr::select(Forb:Gram) %>% rowSums()
-understory$Herb <- understory %>% dplyr::select(Forb, Gram) %>% rowSums()
+understory$Herb <- understory %>% dplyr::select(Forb, Gram, Shrub) %>% rowSums()
 ```
 
-## Study area
+```{r importGeoData, results=F, message=F, warning=F}
+site.geospatial <- read.csv(here("Results", "sites-attributes.csv")) %>% dplyr::select(-Slope, -Aspect)
+site.dat <- merge(site.dat, site.geospatial, by="Site")
 
-```{r StudyAreaData, echo=F, results=F}
-study.area.sites <- read.csv(here("Results", "sites-attributes.csv"))
 study.area.CP <- read.csv(here("Results", "CameronPeak-attributes.csv"))
 CameronPeak <-  st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp")) %>% filter(Incid_Name == "CAMERON PEAK")
 ```
 
-We surveyed aspen seedling regeneration across forests that burned in
-the Cameron Peak Fire located in northern central Colorado (Fig.
-\@ref(fig:FigStudyArea)). Over the period from August to December 2020,
-the Cameron Peak Fire burned
-`r (CameronPeak$BurnBndAc * 0.00404686) %>% round()` square kilometers
-[@mtbsproject2022]. The fire burned across a wide gradient of elevation
-ranging from about
-`r  study.area.CP %>% pull(elevation) %>% min() %>% round()` to
-`r  study.area.CP %>% pull(elevation) %>% max() %>% round()` meters
-above sea level. Approximately
-`r round(study.area.CP %>% filter(severity %in% 3:4) %>% nrow() / nrow(study.area.CP) *100)`%
-of the fire burned at moderate to high severity.
-
-Typically, the study area experiences warm summers (1991-2020 mean July
-daily maximum temperature:
-`r study.area.CP %>% pull(tmax) %>% mean() %>% round(1)`°C), cold
-winters (1991-2020 mean January daily minimum temperature:
-`r study.area.CP %>% pull(tmin) %>% mean() %>% round(1)`°C), and
-moderate amounts of precipitation (1991-2020 mean total annual
-precipitation: `r study.area.CP %>% pull(ppt) %>% mean() %>% round(1)`
-mm) [@prismclimategroup2021]. Notably, the study area received about 10%
-more precipitation in the two years following fire then then 1991-2020
-normal [@prismclimategroup2021].
-
-Pre-fire forest composition and structure within the Cameron Peak burn
-scar varied with elevation. Lower elevation zones below 2800 m were
-characterized by dry and mesic montane forests, dominated by ponderosa
-pine (*Pinus ponderosa*), with lesser components of Douglas-fir
-(*Pseudotsuga menziesii*). Moderate and higher elevation stands between
-approximately 2800 – 3300 m were made up of subalpine forest, dominated
-by Engelmann spruce (*Picea engelmannii*), subalpine fir (*Abies
-lasiocarpa*), and lodgepole pine (*Pinus contorta*). Only about
-`r round(study.area.CP %>% pull(aspen) %>% mean()*100)`% of the area
-burned was dominated by aspen prior to fire, most (\~80%) of which
-occurred between
-`r study.area.CP %>% filter(aspen==1) %>% pull(elevation) %>% quantile(0.10) %>% round()`
-and
-`r study.area.CP %>% filter(aspen==1) %>% pull(elevation) %>% quantile(0.90) %>% round()`
-m in elevation (Fig. \@ref(fig:CameronPeak-Patterns)). About
-`r round(study.area.CP %>% group_by(aspen, severity) %>% summarise(n=n()) %>% mutate(freq=n/sum(n)) %>% filter(aspen==1 & severity==4) %>% pull(freq)*100)`%
-of the aspen forest burned at high severity.
-
-## Study sites
-
-We surveyed `r nrow(site.dat)` sites in the summer of 2022 (Fig.
-\@ref(fig:FigStudyArea)). All sites were selected so that the
-
-```{r FigStudyArea, fig.cap="The study area", fig.height=4.5, fig.width=5, eval=T}
-knitr::include_graphics(here("Results", "Figures", "FigStudyArea.jpg"))
-```
-
-## Field data collection
-
-At each site, we recorded the coordinates, elevation, slope, aspect, and
-pre-fire tree-species composition. We then established two perpendicular
-2 x 50 m transects that intersected at the midpoint. We tallied the
-presence of all conifer seedlings, aspen seedlings, and aspen root
-suckers within each transect and recorded their location along the
-transect within 2 x 2m subplots. Aspen seedlings were differentiated
-from root suckers using methods outlined by Kreider et al.
-[-@kreider2020MethodsDistinguishingAspen], which have been demonstrated
-to be more than 95% accurate [@kreider2021AspenSeedlingEstablishment]
-and were shown to be effective in our study area
-[@carter2024OccurrenceDistributionDriving]. For aspen seedlings and
-suckers, we additionally measured height and recorded the presence or
-absence of any browsing damage.
-
-To better understand how microsite conditions may influence aspen
-seedling establishment, we additionally recorded microsite
-characteristics for all aspen seedlings. We recorded information on
-susbtrate, microtopographic conditions (Flat, Slope, Concave, or Convex)
-within 2.5 cm of seedling (hereafter ‘small microtopography’) and within
-50 cm of seedling (hereafter ‘large microtopography’), presence or
-absence of small (diameter = 2.5-10 cm) and large (diameter \>10 cm)
-coarse woody debris (CWD) within 10 cm of seedling, and distance to the
-nearest aspen sucker when suckers were present within 50 m. To
-understand if seedlings preferentially established in certain microsite
-conditions, we also collected microsite conditions at 5 meter intervals
-along each transect.
-
-```{r calcPotentialDirRad}
-site.dat$Longitude <- site.dat  %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") %>% st_transform(crs="epsg:4326") %>% st_coordinates() %>% as.data.frame() %>% pull(X)
-site.dat$Latitude <- site.dat  %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") %>% st_transform(crs="epsg:4326") %>% st_coordinates() %>% as.data.frame() %>% pull(Y)
-site.dat$FoldedAspect <- abs( 180 - abs(site.dat$Aspect-225))
-site.dat$PotentialDirRad <- -1.467+1.582*cos(DegToRad(site.dat$Latitude))*cos(DegToRad(site.dat$Slope))-1.5*cos(site.dat$FoldedAspect)* sin(DegToRad(site.dat$Slope))*sin(DegToRad(site.dat$Latitude))-0.262*sin(DegToRad(site.dat$Latitude))*sin(DegToRad(site.dat$Slope))+0.607* sin(site.dat$FoldedAspect)*sin(DegToRad(site.dat$Slope))
-site.dat$PotentialDirRad <- exp(site.dat$PotentialDirRad )
-
-site.dat$FoldedAspect <- abs( 180 - abs(site.dat$Aspect-225)) / 180 *100
-```
-
-```{r calcAspenDist}
-site.dat.sf <- site.dat  %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613")
-  
-# Calculate distance of each site to edge of polygon
-dist <- rast(here("Data", "Spatial", "Processed", "aspen-dist.tif"))
-live.dist <- rast(here("Data", "Spatial", "Processed", "aspen-live-dist.tif"))
-site.dat$dist <- extract(live.dist, site.dat.sf)$layer
-site.dat$dist2 <- extract(dist,site.dat.sf)$layer
-site.dat$deltadist <-  site.dat$dist - site.dat$dist2
-```
-
 ```{r summarizeplot}
-# Calculate total number of seedlings per plot
-seedlingdensity.plot <- seedlingdensity.dat %>% group_by(Site) %>% summarize_at(.vars=vars(ABLA:Conifer), .fun=sum)
-
 # Convert to TPH
-tph.fun <- function(x){x/(50*2)*10000}
+tph.fun <- function(x){x/(50*2*2)*10000}
 seedlingdensity.tph <- seedlingdensity.dat %>% group_by(Site) %>% summarize_at(.vars=vars(ABLA:Conifer), .fun=sum) %>% mutate_if(is.numeric, tph.fun)
 
 # Determine if a plot is stocked (>=1 seedling)
 stocking.plot <- seedlingdensity.dat  %>% mutate_if(is.numeric, ~1 * (. != 0)) # convert any values >=1 to 1
 
 # Calculate number of subplots with seedlings per plot
-stocking.plot<- stocking.plot%>% group_by(Site) %>% summarize_at(.vars=vars(ABLA:Conifer), .fun=sum)
+stocking.plot<- stocking.plot %>% group_by(Site) %>% summarize_at(.vars=vars(ABLA:Conifer), .fun=sum)
 
 # Combine data frames
 seedlingdensity.plot  <- full_join(seedlingdensity.tph, stocking.plot,by=c('Site'), suffix=c(".density", ".stocking"))
@@ -255,14 +188,14 @@ seedlingdensity.plot$POTR5.suckerpa <- ifelse(seedlingdensity.plot$POTR5.sucker0
 ```
 
 ```{r summarizeUnderstory}
-understory <- understory %>% group_by(Site) %>% summarise(Forb=mean(Forb), Shrub=mean(Shrub), Gram=mean(Gram), Herb=mean(Herb), Total=mean(Total))
+understory <- understory %>% group_by(Site) %>% summarise(Forb=mean(Forb), Shrub=mean(Shrub), Gram=mean(Gram), Herb=mean(Herb))
 ```
 
 ```{r summarizeHeight}
 seedlingheight.dat <- seedlingmicro.dat %>% group_by(Cluster, Site, Subplot)
 ```
 
-```{r}
+```{r categorizeCWD}
 seedlingmicro.dat <- seedlingmicro.dat %>%
   mutate(Large.CWD1=(Large.CWD+2)*10) %>% 
   mutate(Combo.CWD=Large.CWD1 + Small.CWD) %>% 
@@ -275,37 +208,73 @@ sitemicro.dat <- sitemicro.dat %>%
 ```
 
 ```{r compile}
-compiled.site.plot <- left_join(site.dat, seedlingdensity.plot, by = "Site")
+compiled.site.plot <- left_join(site.dat, seedlingdensity.tph, by = "Site")
 compiled.site.plot <- left_join(compiled.site.plot, understory, by="Site")
 
 compiled.microsite.plot <- left_join(seedlingmicro.dat, site.dat, by="Site")
 compiled.microsite.plot <- left_join(compiled.microsite.plot, understory, by="Site")
 ```
 
-## Post-fire establishment within the Cameron Peak Fire
+## Study area
 
-```{r}
+We surveyed aspen seedling regeneration across upper montane and subalpine forests that burned in the Cameron Peak Fire located in northern central Colorado (Fig. \@ref(fig:FigStudyArea)). Over the period from August to December 2020, the fire burned across `r (CameronPeak$BurnBndAc * 0.00404686) %>% round()` square kilometers [@mtbsproject2024MTBSDataAccessa]. Approximately `r round(study.area.CP %>% filter(severity %in% 3:4) %>% nrow() / nrow(study.area.CP) *100)`% of the fire burned at moderate to high severity [@mtbsproject2024MTBSDataAccess], including a wide gradient of elevation ranging from about `r  study.area.CP %>% pull(elevation) %>% min() %>% round()` to `r  study.area.CP %>% pull(elevation) %>% max() %>% round()` meters above sea level. Generally, winters are cold (1991-2020 mean January daily minimum temperature: `r study.area.CP %>% pull(tmin) %>% mean() %>% round(1)`°C) and summers are hot (1991-2020 mean July daily maximum temperature: `r study.area.CP %>% pull(tmax) %>% mean() %>% round(1)`°C), but across this elevation gradient there is considerable variation in climate. Mean annual temperatures range from `r study.area.CP %>% pull(tmean) %>% min() %>% round(1)` to `r study.area.CP %>% pull(tmean) %>% max() %>% round(1)`°C and mean annual precipitation ranges from `r study.area.CP %>% pull(ppt) %>% min() %>% round()` to `r study.area.CP %>% pull(ppt) %>% max() %>% round()` mm [1991-2020 means; @prismclimategroup2021Monthly30yearClimate]).
+
+```{r FigStudyArea, fig.cap="The study area, study sites (triangles), and the distribution of live and burned aspen. The inset map displays the study area relative to western United States.", fig.height=3, fig.width=4.6, eval=T}
+knitr::include_graphics(here("Maps", "studyarea.jpg"))
+```
+
+Pre-fire forest composition and structure within the Cameron Peak burn scar also varied with elevation. Lower elevation zones below 2800 m were characterized by dry and mesic montane forests, dominated by ponderosa pine (*Pinus ponderosa*), with lesser components of Douglas-fir (*Pseudotsuga menziesii*). Moderate and higher elevation stands between approximately 2800 – 3300 m were made up of subalpine forest, dominated by Engelmann spruce (*Picea engelmannii*), subalpine fir (*Abies lasiocarpa*), and lodgepole pine (*Pinus contorta*). In the two decades prior to the fire, outbreaks of mountain pine beetles (*Dendroctonus ponderosae*), spruce beetles (*Dendroctonus rufipennis)*, and western balsam bark beetles have caused mortality of pine, Engelmann spruce, and subalpine fir, respectively, across about 40% of the burned area [@rodman2021EffectsBarkBeetle]. Only about `r round(study.area.CP %>% pull(aspen) %>% mean()*100)`% of the area burned was dominated by aspen prior to fire, most (\~80%) of which occurred between `r study.area.CP %>% filter(aspen==1) %>% pull(elevation) %>% quantile(0.10) %>% round()` and `r study.area.CP %>% filter(aspen==1) %>% pull(elevation) %>% quantile(0.90) %>% round()` m in elevation. About `r round(study.area.CP %>% group_by(aspen, severity) %>% summarise(n=n()) %>% mutate(freq=n/sum(n)) %>% filter(aspen==1 & severity==4) %>% pull(freq)*100)`% of the aspen forest burned at high severity.
+
+## Study sites
+
+We surveyed `r nrow(site.dat)` sites in the summer of 2022 (Fig. \@ref(fig:FigStudyArea)). Sites were randomly located using geospatial data describing the extent and severity of the Cameron Peak fire from the Monitoring Trends in Burn Severity (MTBS) Project [-@mtbsproject2024MTBSDataAccess; -@mtbsproject2024MTBSDataAccessa] and the extent of pre-fire aspen cover from Cook et al. [-@cook2024MappingQuakingAspen]. We combined these data sources to identify areas that: (a) burned at high or moderate severity and (b) were located \>50 m and \<1000 m away from a pre-fire patch of aspen. Sites were further limited to accessible areas, defined as public land within 1000 m of a road or 500 m away from a trail and no more than 1 km up the trail. To reduce the potential effects of psuedoreplication, all sites were located \>400 meters apart. Despite the extensive area burned, the accessible area was notably restricted by a limited road network and post-fire treatments (e.g., aerial mulching) and damage to infrastructure. Collectively, these sites span broad gradients in elevation (`r site.dat %>% pull(elevation) %>% min() %>% round()` - `r site.dat %>% pull(elevation) %>% max() %>% round()` m), mean annual daily temperature (`r site.dat %>% pull(tmean) %>% min() %>% round(1)` - `r site.dat %>% pull(tmean) %>% max() %>% round(1)`°C), and mean annual total precipitation (`r site.dat %>% pull(ppt) %>% min() %>% round()` - `r site.dat %>% pull(ppt) %>% max() %>% round(0)` mm) (Table S\@ref(tab:Tabstudysites)).
+
+## Field data collection
+
+At each site, we recorded the coordinates, elevation, slope, aspect, and pre-fire tree-species composition. We then established two perpendicular 2 x 50 m transects that intersected at the midpoint [@andrus2021FutureDominanceQuaking]. We tallied the presence of all conifer seedlings, aspen seedlings, and aspen root suckers within each transect and recorded their location along the transect within 2 x 2m subplots. Aspen seedlings were differentiated from root suckers using methods outlined by Kreider et al. [-@kreider2020MethodsDistinguishingAspen], which have been demonstrated to be more than 95% accurate [@kreider2021LowdensityAspenSeedling] and were shown to be effective in our study area [@carter2024OccurrenceDistributionDriving]. Along each transect, we also collected information on percent herbaceous cover in three 1 x 1 m quadrats located every 20 m along each transect.
+
+To test the hypothesis that microsite conditions influence aspen seedling, we additionally recorded information on proximity to coarse woody debris, substrate conditions, and microtopographic condition for each aspen seedling. We characterized the microtopography as flat, concave, or convex within 2.5 cm of seedling (hereafter ‘small microtopography’) and within 50 cm of seedling (hereafter ‘large microtopography’). We also recorded the presence or absence of small (diameter = 2.5-10 cm) and large (diameter \>10 cm) coarse woody debris (CWD) within 10 cm of seedling. We also collected microsite conditions at 5 meter intervals along each transect to serve as a baseline of the relative abundance each condition across the site.
+
+## Data analysis
+
+### Patterns of post-fire regeneration
+
+To understand how pre-fire forest composition affects initial species composition, we quantified the number of plots where each species was present pre- and post-fire.
+
+```{r comp}
 # calculate the number of plots with seedlings present by species
 seedlingdensity.tph$POTR5 <- rowSums(seedlingdensity.tph[,c("POTR5.seedling", "POTR5.sucker")]) # calculate density of post-fire aspen seedlings and suckers
 
 comp1 <- seedlingdensity.tph %>% 
   pivot_longer(!Site) %>% # convert to long form
-  mutate(presence=ifelse(value>0, 10, 0), ) %>% 
-  filter(!name %in% c("Conifer", "POTR5.seedling", "POTR5.sucker")) # remove rows with aspen seedlings, aspen saplings, and conifers
+  mutate(presence=ifelse(value>0, 10, 0)) %>% filter(name %in% c("ABLA", "PICO", "PIEN", "PIPO", "POTR5.seedling"))
 
+comp1.summary <- comp1 %>% filter(value>0) %>% group_by(name) %>% summarize(n=n(), mean=mean(value), median= median(value), min=min(value), max=max(value))  %>% mutate(species=c("subalpine fir", "lodgepole pine", "Engelmann spruce", "ponderosa pine", "quaking aspen")) %>% relocate(species) %>% dplyr::select(-name)
+```
+
+```{r postfireEstab}
 # calculate the number of plots with overstory trees present by species
 comp2 <- overstory %>% 
   pivot_longer(!Site) %>% 
   mutate(presence=ifelse(value>0, 1, 0))
 
-comp <- full_join(comp1, comp2, by=c("Site", "name"), suffix=c(".pre", ".post")) %>%
+comp <- full_join(comp1, comp2, by=c("Site", "name"), suffix=c(".post", ".pre")) %>%
   mutate_if(is.numeric, function(x){replace_na(x,0)}) %>% # replacing missing value with 0
   mutate(combo=presence.pre+presence.post) %>%
   mutate(combo=factor(combo, levels=c(0, 1, 10, 11), labels=c("absent pre- &\npost-fire", "present pre-fire &\nabsent post-fire", "absent pre-fire &\npresent post-fire", "present pre- &\npost-fire")))  %>% 
   group_by(combo, name) %>% 
-  summarise(freq=n())
+  summarise(freq=n()) %>%
+  mutate(prop=freq/sum(freq)) 
+comp$species <- factor(comp$name, levels=c( "PIPO", "PSME", "PICO","ABLA", "PIEN", "POTR5.seedling"), labels=c( "ponderosa\npine", "Douglas\nfir", "lodgepole\npine", "subalpine\nfir", "Engelmann\nspruce", "trembling\naspen"))
 
-comp$species <- factor(comp$name, levels=c( "PIPO", "PSME", "PICO","ABLA", "PIEN", "POTR5"), labels=c( "ponderosa\npine", "Douglas\nfir", "lodgepole\npine", "subalpine\nfir", "Engelmann\nspruce", "trembling\naspen"))
+comp.presence <- full_join(comp1, comp2, by=c("Site", "name"), suffix=c(".post", ".pre")) %>%
+  mutate_if(is.numeric, function(x){replace_na(x,0)}) %>% # replacing missing value with 0
+  mutate(combo=presence.pre+presence.post) %>%
+  filter(combo %in% c(1, 11)) %>% 
+  mutate(combo=factor(combo, levels=c(1,11), labels=c("absent", "present")))  %>% 
+  group_by(name, combo) %>% 
+  summarise(freq=n()) %>%
+  mutate(percent=round(freq/sum(freq)*100, 1)) 
 
 gg.postfirecomp <- ggplot(comp, aes(x=species, y=freq, fill=combo))+geom_bar(stat="identity")+xlab("Species")+ylab("number of plots")+theme(legend.position = "bottom", legend.title = element_blank())+scale_fill_manual(values=c("grey", "#fc8d59", "#3288bd", "#99d594"))+guides(fill=guide_legend(nrow=1,byrow=TRUE))
 
@@ -314,128 +283,206 @@ Fig.file <- here("Results", "Figures", "PostFireComposition.jpg")
 ggsave(filename=Fig.file, plot=gg.postfirecomp, width=5, height=3, units="in", dpi=300)
 ```
 
-s## Environmental drivers of post-fire aspen seedling establishment
+### Clustering of seedlings
 
-```{r setPredictorVarz}
-select.continuous.varz <-  c("FoldedAspect", "Elevation", "Slope", "dist", "Herb")
+We tested if seedlings were clustered using a Chi-squared goodness-of-fit-test where the null hypothesis was complete spatial randomness (i.e., that seedlings were equally distributed across the subplots). Because clustering is difficult to detect at low densities, we only tested for clustering of seedlings in plots with at least 1000 seedlings per ha (i.e., or on average 2 seedlings per subplot). To quantify statistical significance, we used a bootstrapping approach with 1000 replications. We performed this analysis separately for each plot and tested for spatial randomness for the aspen seedlings and then for all conifer seedlings combined. We also tested if conifer and aspen seedlings were more likely to co-occur at each plot, using a Chi-squared goodness-of-fit-test where the null hypothesis was that conifer seedlings were equally likely to occur in subplots with and without aspen seedlings. As above, we performed this analysis separately for each site and used a bootstrapping approach with 1000 replication to determine the statistical significance. All tests were performed in R [@rcoreteam2024LanguageEnvironmentStatistical].
 
-select.continuous.varz.names <- c(
-  `FoldedAspect` = "aspect southwestness (%)",
-  `Elevation`="elevation (m)",
-  `Slope`="slope (degrees)",
-  `dist` = "distance to\nlive aspen (m)",
-  `Herb` = "herbaceous cover (%)"
-)
+```{r csr}
+## Aspen
+seedlingdensity.dat <- seedlingdensity.dat  %>% unite(SiteTransectSubplot, c(Site, Transect, Subplot), remove=F)
+sitesaspen <- seedlingdensity.plot %>% filter(POTR5.seedling.density>0) %>% pull(Site)
+
+csr.res <- data.frame(Site=sitesaspen , chisquared=NA, p=NA, density=NA, n.subplots=NA)
+for(j in sitesaspen){
+  testj <- seedlingdensity.dat %>% filter(Site==j) %>% dplyr::select(SiteTransectSubplot, POTR5.seedling) %>% pivot_wider(names_from=SiteTransectSubplot, values_from= POTR5.seedling) %>% chisq.test(simulate.p.value = TRUE, B = 1000)
+  csr.res[csr.res$Site==j,]$chisquared <- testj$statistic
+  csr.res[csr.res$Site==j,]$p <- round(testj$p.value,3)
+   csr.res[csr.res$Site==j,]$density <- seedlingdensity.plot %>% filter(Site==j) %>% pull(POTR5.seedling.density) 
+      csr.res[csr.res$Site==j,]$n.subplots <- stocking.plot%>% filter(Site==j) %>% pull(POTR5.seedling)
+}
+csr.res <- left_join(csr.res,( seedlingdensity.dat %>% filter(POTR5.seedling>0) %>% group_by(Site) %>% summarize(max=max(POTR5.seedling), min=min(POTR5.seedling))), by="Site") %>% mutate(n=density/100)
+csr.res.aspen <- csr.res %>% filter(density>1000)
+
+## Conifer
+sitesconifers <- seedlingdensity.plot %>% filter(Conifer.density>0) %>% pull(Site)
+
+csr.res <- data.frame(Site=sitesconifers, chisquared=NA, p=NA, density=NA, n.subplots=NA)
+for(j in sitesconifers){
+  testj <- seedlingdensity.dat %>% filter(Site==j) %>% dplyr::select(SiteTransectSubplot, Conifer) %>% pivot_wider(names_from=SiteTransectSubplot, values_from= Conifer) %>% chisq.test(simulate.p.value = TRUE, B = 1000)
+  csr.res[csr.res$Site==j,]$chisquared <- testj$statistic
+  csr.res[csr.res$Site==j,]$p <- round(testj$p.value,3)
+   csr.res[csr.res$Site==j,]$density <- seedlingdensity.plot %>% filter(Site==j) %>% pull(Conifer.density) 
+      csr.res[csr.res$Site==j,]$n.subplots <- stocking.plot%>% filter(Site==j) %>% pull(Conifer)
+}
+csr.res <- left_join(csr.res,( seedlingdensity.dat %>% filter(Conifer>0) %>% group_by(Site) %>% summarize(max=max(Conifer), min=min(Conifer))), by="Site") %>% mutate(n=density/100)
+csr.res.con <- csr.res  %>% filter(density >1000)
+
+# Lodgepole
+sitesPICO <- seedlingdensity.plot %>% filter(PICO.density>0) %>% pull(Site)
+
+csr.res <- data.frame(Site=sitesconifers, chisquared=NA, p=NA, density=NA, n.subplots=NA)
+for(j in sitesPICO){
+  testj <- seedlingdensity.dat %>% filter(Site==j) %>% dplyr::select(SiteTransectSubplot, PICO) %>% pivot_wider(names_from=SiteTransectSubplot, values_from= PICO) %>% chisq.test(simulate.p.value = TRUE, B = 1000)
+  csr.res[csr.res$Site==j,]$chisquared <- testj$statistic
+  csr.res[csr.res$Site==j,]$p <- round(testj$p.value,3)
+  csr.res[csr.res$Site==j,]$density <- seedlingdensity.plot %>% filter(Site==j) %>% pull(PICO.density) 
+  csr.res[csr.res$Site==j,]$n.subplots <- stocking.plot%>% filter(Site==j) %>% pull(PICO)
+}
+csr.res <- left_join(csr.res,( seedlingdensity.dat %>% filter(PICO>0) %>% group_by(Site) %>% summarize(max=max(PICO), min=min(PICO))), by="Site") %>% mutate(n=density/100)
+csr.res.PICO <- csr.res  %>% filter(density >1000)
+
+# Conifer + aspen
+sitesca <- seedlingdensity.plot %>% filter(Conifer.density>0 & POTR5.seedling.density>0) %>% pull(Site)
+
+csr.res <- data.frame(Site=sitesca,chisquared=NA, p=NA, con.density=NA, POTR5.density=NA)
+for(j in sitesca ){
+  testj<- seedlingdensity.dat %>% filter(Site==j) %>% mutate(Conifer.pa =factor(ifelse(Conifer>0, "presence", "absence")), Aspen.pa =factor(ifelse(POTR5.seedling>0, "presence", "absence"))) %>%  group_by(Aspen.pa) %>% summarize(sum=sum(Conifer)) %>% pivot_wider(names_from="Aspen.pa", values_from = "sum") %>% chisq.test(simulate.p.value = TRUE, B = 1000)
+  
+   #testj<- seedlingdensity.dat %>% filter(Site==j) %>% mutate(Conifer.pa =factor(ifelse(Conifer>0, "presence", "absence")), Aspen.pa =factor(ifelse(POTR5.seedling>0, "presence", "absence"))) %>%  group_by(Conifer.pa) %>% summarize(sum=sum(POTR5.seedling)) %>% pivot_wider(names_from="Conifer.pa", values_from = "sum") %>% chisq.test(simulate.p.value = TRUE, B = 10000)
+
+  
+  csr.res[csr.res$Site==j,]$chisquared <- round(testj$statistic,2)
+  csr.res[csr.res$Site==j,]$p <- round(testj$p.value,3)
+  csr.res[csr.res$Site==j,]$con.density <- seedlingdensity.plot %>% filter(Site==j) %>% pull(Conifer.density)
+  csr.res[csr.res$Site==j,]$POTR5.density <- seedlingdensity.plot %>% filter(Site==j) %>% pull(POTR5.seedling.density)
+}
+csr.res.con.aspen <- csr.res
+csr.res.con.aspen <- csr.res.con.aspen  %>% filter(con.density >1000 & POTR5.density>1000)
 ```
 
-```{r fitsitemod}
-library(lmtest)
+### Site-level drivers of post-fire aspen seedling regeneration
+
+To understand the site factors affecting postfire aspen seedling establishment, we used a zero-inflated generalized linear modeling approach with a negative binomial distribution (ZINB) to model the total number of seedlings observed at a site. Zero-inflated models are useful for modeling an abundance of zeros [@zuur2009Chapter11ZeroTruncated], such as the high number plots without postfire aspen seedlings that we observed here. As predictor variables we tested elevation and heat load, which we calculated using plot-level information on slope, aspect, and latitude [@mccune2002EquationsPotentialAnnual]. As an indicator of seed availability, we included distance to live aspen. Finally, as indicators of site quality and competition, we tested for effects of herbaceous cover and conifer seeding density, which was log transformed to the align with the log transformation applied to the aspen seedling densities. Prior to building the model, all variables were standardized to allow for easier comparison of coefficients. We trimmed the full model by dropping each predictor variable individually and using likelihood ratio tests to compare the full model with the reduced model [@zuur2009Chapter11ZeroTruncated]. Variables were trimmed first from the zero part of the model and then the count component. As a measure of model performance, we calculated a pseudo R^~2~^, defined as the squared correlation between the model's actual and predicted response. To visualize the effects of each significant predictor variables, we calculated the conditional predicted aspen seedling density as a function of the predictor, holding all other predictor variables to their mean value. The ZINB models were fit n R [@rcoreteam2024LanguageEnvironmentStatistical] using the *glmmTMB* package [@glmmTMB], likelihood ratio tests were performed using the *lmtest* package [@lmtest], pseudo R^~2~^ was calculated using the *performance* package [@performance], and conditional predictions were constructed using the *marginaleffects* package [@marginaleffects] and plotted using the *ggplot2* package [@ggplot2].
+
+```{r fitsitemod, results=F, message=F, warning=F}
 compared <- function(full, reduced){
   lrt <- lrtest(full, reduced) 
   res <- data.frame(Predictor=NA, AIC=AIC(reduced), Chisq = lrt$Chisq[2], Pr=lrt$`Pr(>Chisq)`[2])
   return(res)
 }
 
+# Check correlation
+p1 <- compiled.site.plot %>% 
+  mutate(Aspen.density = log(POTR5.seedling), Herb=Herb, Conifer.density=log(Conifer+0.001)) %>% 
+  dplyr::select(Aspen.density, Elevation, HeatLoad, Slope, Herb, Conifer.density, distance.post) %>%
+  cor(method="pearson") %>% 
+  ggcorrplot(lab=T, lab_size=3.5)
+ggsave(p1, filename=here("Results", "Figures", "pairwise-correlation.jpg"), width=5, height=5, units="in")
+
 # Fit full model
-site.mod.full<- zeroinfl(POTR5.seedling.density ~ scale(Elevation) + scale(FoldedAspect) + scale(Slope) + scale(Herb) +scale(Conifer.density), data=compiled.site.plot, dist="negbin", link="logit")
-# remove variables from full model where coefficient doesn't align with hypothesized direction
+site.mod.full<- glmmTMB(POTR5.seedling ~ scale(Elevation) + scale(HeatLoad) + scale(Herb) + scale(log(Conifer+0.001)) + scale(distance.post), zi=~scale(Elevation) + scale(HeatLoad)+ scale(Herb) + scale(log(Conifer+0.001)) +scale(distance.post), data=compiled.site.plot, family=nbinom2)
 
 # Drop from zero part of model
 modz <- list(
   # drop elevation
-   zeroinfl(POTR5.seedling.density ~ scale(Elevation) + scale(FoldedAspect) + scale(Slope) + scale(Herb) +scale(Conifer.density) | scale(FoldedAspect) + scale(Slope) + scale(Herb) +scale(Conifer.density), data=compiled.site.plot, dist="negbin", link="logit"),
-   # drop aspect
-  zeroinfl(POTR5.seedling.density~scale(Elevation) + scale(FoldedAspect) + scale(Slope)  + scale(Herb) +scale(Conifer.density)| scale(Elevation)  + scale(Slope) + scale(Herb)+scale(Conifer.density),data=compiled.site.plot, dist="negbin", link="logit"),
-  # drop slope
-  zeroinfl(POTR5.seedling.density~scale(Elevation) + scale(FoldedAspect) + scale(Slope) + scale(Herb) +scale(Conifer.density) | scale(Elevation)  + scale(FoldedAspect)+ scale(Herb)+scale(Conifer.density),data=compiled.site.plot, dist="negbin", link="logit"),
-  # drop herb
-  zeroinfl(POTR5.seedling.density~scale(Elevation) + scale(FoldedAspect) + scale(Slope) + scale(Herb)+scale(Conifer.density) | scale(Elevation)  + scale(FoldedAspect)+ scale(Slope)+scale(Conifer.density), data=compiled.site.plot, dist="negbin", link="logit"),
-  # drop conifer seedling density
-  zeroinfl(POTR5.seedling.density~scale(Elevation) + scale(FoldedAspect) + scale(Slope) + scale(Herb)+scale(Conifer.density) | scale(Elevation)  + scale(FoldedAspect)+ scale(Slope)+scale(Herb), data=compiled.site.plot, dist="negbin", link="logit")
+  glmmTMB(POTR5.seedling ~ scale(Elevation) + scale(HeatLoad) + scale(Herb) + scale(log(Conifer+0.001)) + scale(distance.post), zi=~scale(HeatLoad)+ scale(Herb) + scale(log(Conifer+0.001)) +scale(distance.post), data=compiled.site.plot, family=nbinom2),
+  
+  # drop HeatLoad
+  glmmTMB(POTR5.seedling ~ scale(Elevation) + scale(HeatLoad) + scale(Herb) + scale(log(Conifer+0.001)) + scale(distance.post), zi=~scale(Elevation) + scale(Herb) + scale(log(Conifer+0.001)) +scale(distance.post), data=compiled.site.plot, family=nbinom2),
+
+  #drop herb
+  glmmTMB(POTR5.seedling~ scale(Elevation) + scale(HeatLoad) + scale(Herb) + scale(log(Conifer+0.001)) + scale(distance.post), zi=~scale(Elevation) + scale(HeatLoad) + scale(log(Conifer+0.001)) +scale(distance.post), data=compiled.site.plot, family=nbinom2),
+
+  # drop con density
+  glmmTMB(POTR5.seedling ~ scale(Elevation) + scale(HeatLoad) + scale(Herb) + scale(log(Conifer+0.001)) + scale(distance.post), zi=~scale(Elevation) + scale(HeatLoad)+ scale(Herb) +scale(distance.post), data=compiled.site.plot, family=nbinom2),
+  
+  # drop distance
+  glmmTMB(POTR5.seedling ~ scale(Elevation) + scale(HeatLoad) + scale(Herb) + scale(log(Conifer+0.001)) + scale(distance.post), zi=~scale(Elevation) + scale(HeatLoad)+ scale(Herb) + scale(log(Conifer+0.001)), data=compiled.site.plot, family=nbinom2)
+
 )
 
-res0 <- do.call(rbind, lapply(modz, compared, full=site.mod.full)) %>% mutate(Predictor=c("Elevation", "Aspect", "Slope", "Herb", "Conifer"))
-res0 <- rbind(c("Full model", AIC(site.mod.full), NA, NA), res0) %>% as.data.frame() %>% mutate(AIC=round(as.numeric(AIC), 1), Chisq=round(as.numeric(Chisq), 1), Pr=round(as.numeric(Pr), 3))
-colnames(res0) <- c("Predictor", "AIC", "likelihood ratio Chi-squared statistic", "p")
-res0$Model <- "Zero model"
+res0 <- do.call(rbind, lapply(modz, compared, full=site.mod.full)) %>% mutate(Predictor=c("Elevation", "HeatLoad", "Herb","Conifer", "distance.post"))
+colnames(res0) <- c("Predictor", "AIC", "χ2", "p")
+res0$Component <- "Zero"
+
+site.mod.red0<- glmmTMB(POTR5.seedling~ scale(Elevation) + scale(HeatLoad) + scale(Herb) + scale(log(Conifer+0.001)) + scale(distance.post), zi=~scale(Elevation), data=compiled.site.plot, family=nbinom2)
 
 
-## Count part of model
-site.mod.full <- zeroinfl(POTR5.seedling.density~scale(Elevation) + scale(FoldedAspect) + scale(Slope) + scale(Herb) + scale(Conifer.density) | scale(Elevation),data=compiled.site.plot, dist="negbin", link="logit")
-
+# Drop from count part of model
 modz <- list(
   # drop elevation
-   zeroinfl(POTR5.seedling.density~scale(FoldedAspect) + scale(Slope) + scale(Herb) + scale(Conifer.density) | scale(Elevation),data=compiled.site.plot, dist="negbin", link="logit"),
+  glmmTMB(POTR5.seedling ~ scale(HeatLoad) + scale(Herb) + scale(log(Conifer+0.001)) + scale(distance.post), zi=~scale(Elevation), data=compiled.site.plot, family=nbinom2),
    # drop aspect
-  zeroinfl(POTR5.seedling.density~scale(Elevation) + scale(Slope) + scale(Herb) + scale(Conifer.density)| scale(Elevation),data=compiled.site.plot, dist="negbin", link="logit"),
-  # drop slope
- zeroinfl(POTR5.seedling.density~scale(Elevation) + scale(FoldedAspect) + scale(Herb) + scale(Conifer.density)| scale(Elevation),data=compiled.site.plot, dist="negbin", link="logit"),
- # drop herb
- zeroinfl(POTR5.seedling.density~scale(Elevation) + scale(FoldedAspect) + scale(Slope) + scale(Conifer.density)| scale(Elevation),data=compiled.site.plot, dist="negbin", link="logit"),
-  # drop conifer seedling
-  zeroinfl(POTR5.seedling.density~scale(Elevation) + scale(FoldedAspect) + scale(Slope) + scale(Herb) | scale(Elevation),data=compiled.site.plot, dist="negbin", link="logit")
+  glmmTMB(POTR5.seedling ~ scale(Elevation)  + scale(Herb) + scale(log(Conifer+0.001)) + scale(distance.post), zi=~scale(Elevation), data=compiled.site.plot, family=nbinom2),
+  # drop herb
+  glmmTMB(POTR5.seedling ~ scale(Elevation) + scale(HeatLoad)  + scale(log(Conifer+0.001)) + scale(distance.post), zi=~scale(Elevation), data=compiled.site.plot, family=nbinom2),
+ # drop conifer density
+  glmmTMB(POTR5.seedling ~ scale(Elevation) + scale(HeatLoad) + scale(Herb) + scale(distance.post), zi=~scale(Elevation), data=compiled.site.plot, family=nbinom2),
+ # drop seed-source distance
+  glmmTMB(POTR5.seedling~ scale(Elevation) + scale(HeatLoad) + scale(Herb) + scale(log(Conifer+0.001)), zi=~scale(Elevation), data=compiled.site.plot, family=nbinom2)
 )
 
-res1 <- do.call(rbind, lapply(modz, compared, full=site.mod.full)) %>% mutate(Predictor=c("Elevation", "Aspect", "Slope", "Herb", "Conifer"))
-res1 <- rbind(c("Full model", AIC(site.mod.full), NA, NA), res1) %>% as.data.frame() %>% mutate(AIC=round(as.numeric(AIC), 1), Chisq=round(as.numeric(Chisq), 1), Pr=round(as.numeric(Pr), 3))
-colnames(res1) <- c("Predictor", "AIC", "likelihood ratio Chi-squared statistic", "p")
-res1$Model <- "Count model"
+res1 <- do.call(rbind, lapply(modz, compared, full=site.mod.red0)) %>% mutate(Predictor=c("Elevation", "HeatLoad", "Herb","Conifer", "distance.post"))
+colnames(res1) <- c("Predictor", "AIC", "χ2", "p")
+res1$Component <- "Count"
 
-zinb.selection <- bind_rows(res0, res1)  %>% relocate(where(is.character), .before=where(is.numeric)) 
+zinb.comparison <- bind_rows(res0, res1)  %>% relocate(where(is.character), .before=where(is.numeric)) 
+zinb.comparison$Predictor <- c(gsub("[.]", "", gsub("scale", "", gsub("[)]", "", gsub("[(]", "",  gsub("zi", "", gsub("cond", "", gsub("log", "", gsub("[ + 0.001]", "",zinb.comparison$Predictor )))))))))
+zinb.comparison <- zinb.comparison %>% 
+  relocate(Component)  %>% 
+  mutate(Predictor=factor(Predictor, levels=c( "Elevation", "HeatLoad", "Herb", "Conifer", "distancepost"), labels=c("Elevation", "Heat load", "Herbaceous cover", "Conifer seedling density", "Seed-source distance"), ordered=T)) %>% 
+  mutate(AIC=round(AIC,1), 
+         χ2=round(χ2,2), 
+         p=ifelse(p<0.001, "<0.001", round(p,3)))
 
-site.mod.final <- zeroinfl(POTR5.seedling.density ~ scale(Conifer.density) | scale(Elevation), data=compiled.site.plot, dist="negbin", link="logit")
+site.mod.reduced <- glmmTMB(POTR5.seedling ~ scale(Elevation) + scale(log(Conifer+0.001)), zi=~scale(Elevation), data=compiled.site.plot, family=nbinom2)
 
-site.mod.final.summary <- summary(site.mod.final)
-site.mod.final.summary0 <- site.mod.final.summary$coefficients$zero
-colnames(site.mod.final.summary0) <- c("Estimate", "SE", "z", "p")
-site.mod.final.summarycount <- site.mod.final.summary$coefficients$count
-colnames(site.mod.final.summarycount) <- c("Estimate", "SE", "z", "p")
-site.mod.final.summary.print <- rbind(site.mod.final.summary0, site.mod.final.summarycount) %>% as.data.frame() %>% mutate(Estimate=round(Estimate, 3), SE=round(SE,3),z= round(z, 3), p=round(p,3))
-site.mod.final.summary.print$Model<- c(rep("Zero model", nrow(site.mod.final.summary0 )), rep("Count model", nrow(site.mod.final.summarycount)))
-site.mod.final.summary.print$Predictor<- c(gsub("scale", "", gsub("[)]", "", gsub("[(]", "",row.names(site.mod.final.summary0)))), gsub("[.]", " ", gsub("scale", "", gsub("[)]", "", gsub("[(]", "",row.names(site.mod.final.summarycount))))))
+# Model validation
+site.mod.reduced.sim <- simulateResiduals(site.mod.reduced)
+jpeg(filename=here("Results", "figures", "zinb-residuals.jpg"), width=7, height=5, units="in", res=300)
+plot(site.mod.reduced.sim)
+dev.off()
 
-site.mod.final.summary.print <- site.mod.final.summary.print %>% relocate(where(is.character), .before=where(is.numeric)) %>% filter(!Predictor=="Logtheta")
-row.names(site.mod.final.summary.print) <- NULL
+jpeg(filename=here("Results", "figures", "zinb-residualsxpredictors.jpg"), width=7, height=5, units="in", res=300)
+par(mfrow = c(1,2))
+plotResiduals(site.mod.reduced.sim, compiled.site.plot$Elevation)
+plotResiduals(site.mod.reduced.sim, compiled.site.plot$Conifer.density)
+dev.off()
 
-site.mod.r2 <- r2_zeroinflated(site.mod.final, method="correlation") %>% round(2)
-site.mod.01 <- compiled.site.plot %>% mutate(prediction=predict(site.mod.final, type="zero")) %>% mutate(predict01 =ifelse(prediction<=0.5, 1,0)) %>% count(predict01, POTR5.seedling01) %>%
+site.mod.r2 <- r2_zeroinflated(site.mod.reduced, method="correlation") %>% round(2)
+site.mod.01 <- compiled.site.plot %>% mutate(prediction=predict(site.mod.reduced, type="zlink")) %>% mutate(predict01 =ifelse(prediction<=0.5, 1,0), POTR5.seedling01=ifelse(POTR5.seedling>0,1,0)) %>% count(predict01, POTR5.seedling01) %>%
   group_by(POTR5.seedling01) %>%          
   mutate(prop = prop.table(n))
-  
-library(marginaleffects)
-conditional.pred.elev <- plot_predictions(site.mod.final, condition = "Elevation", type="zero", conf_level=0.95, draw=T)$data %>% as.data.frame() %>% mutate(conf.low = ifelse(conf.low<0, 0, conf.low), conf.high = ifelse(conf.high>1, 1, conf.high)) %>% ggplot(aes(x=Elevation, y=estimate))+geom_ribbon(aes(ymin=conf.low, ymax=conf.high), fill="#4F81BD",alpha=0.5)+geom_line(col="#4F81BD")+ylab("Probability of observing zero aspen seedlings")+xlab("Elevation (m)")+coord_cartesian(xlim = c(2500,3250), ylim = c(0,1), expand = FALSE)
 
-conditional.pred.conifer <- plot_predictions(site.mod.final, condition = "Conifer.density", type="count", conf_level=0.95, draw=T)$data %>% as.data.frame() %>% mutate(conf.low = ifelse(conf.low<0, 0, conf.low))%>% ggplot(aes(x=Conifer.density, y=estimate))+geom_ribbon(aes(ymin=conf.low, ymax=conf.high), fill="#4F81BD",alpha=0.5)+geom_line(col="#4F81BD")+ylab("Aspen seedlings per hectare")+xlab("Conifer seedlings per hectare")+coord_cartesian(xlim = c(0,3500), ylim = c(0,50000), expand = FALSE)
+# Pull coeffiecients
+zinb.coef <- bind_rows(as.data.frame(summary(site.mod.reduced)$coefficients$cond), as.data.frame(summary(site.mod.reduced)$coefficients$zi))
+zinb.coef <- zinb.coef  %>%
+  dplyr::select(Estimate, `Std. Error`) %>%
+  mutate(Predictor=c(c(gsub("scale", "", gsub("[)]", "", gsub("[(]", "",  gsub("zi", "", gsub("cond", "", gsub("log", "", gsub("[ + 0.001]", "",gsub("[[:digit:]]+", "", row.names(zinb.coef )))))))))))) %>% 
+  filter(!Predictor=="Intercept")  %>% 
+  filter(!Predictor=="Logtheta")  %>% 
+  mutate(Component=c(rep("Count", 2), rep("Zero", 1))) %>% 
+  mutate(Predictor=factor(Predictor, levels=c( "Elevation", "HeatLoad", "Herb", "Conifer", "distancepost"), labels=c("Elevation",  "Heat load", "Herbaceous cover", "Conifer seedling density", "Seed-source distance"), ordered=T)) %>%
+  relocate(Component, Predictor) %>% 
+  set_rownames(NULL) %>% 
+  mutate(Estimate=round(Estimate, 2), `Std. Error`=round(`Std. Error`, 2))
+
+# plot conditional predictions
+conditional.pred.zero.elev <- plot_predictions(site.mod.reduced, condition = "Elevation", type="zprob", conf_level=0.95, draw=T, vcov=T)$data %>% as.data.frame() %>% mutate(conf.low = ifelse(conf.low<0, 0, conf.low), conf.high = ifelse(conf.high>1, 1, conf.high)) %>% ggplot(aes(x=Elevation, y=estimate))+geom_ribbon(aes(ymin=conf.low, ymax=conf.high), fill="#4F81BD",alpha=0.5)+geom_line(col="#4F81BD")+ylab("Probability of observing\nzero aspen seedlings")+xlab("Elevation (m)")+coord_cartesian(xlim = c(2500,3100), ylim = c(0,1), expand = FALSE)+scale_x_continuous(breaks=seq(2500,3100,250))
+
+conditional.pred.count.elev <- plot_predictions(site.mod.reduced, condition = "Elevation", type="response", conf_level=0.95, draw=T, vcov=T)$data %>% as.data.frame() %>% mutate(conf.low = ifelse(conf.low<0, 0, conf.low))%>% ggplot(aes(x=Elevation, y=estimate))+geom_ribbon(aes(ymin=conf.low, ymax=conf.high), fill="#4F81BD",alpha=0.5)+geom_line(col="#4F81BD")+ylab("Aspen seedling density\n(no. per ha)")+xlab("Elevation (m)")+coord_cartesian(ylim = c(100,7500), xlim = c(2500,3100),expand = FALSE)+scale_x_continuous(breaks=seq(2500,3100,250))
+
+conditional.pred.count.conifer <- plot_predictions(site.mod.reduced, condition = "Conifer", type="response", conf_level=0.95, draw=T, vcov=T)$data %>% as.data.frame() %>% mutate(conf.low = ifelse(conf.low<0, 0, conf.low))%>% ggplot(aes(x=Conifer, y=estimate))+geom_ribbon(aes(ymin=conf.low, ymax=conf.high), fill="#4F81BD",alpha=0.5)+geom_line(col="#4F81BD")+ylab("Aspen seedling density\n(no. per ha)")+xlab("Conifer seedling density\n(no. per ha)")+coord_cartesian(ylim = c(50,2500), ,xlim = c(50,1700),expand = FALSE)
 
 
-p1 <- conditional.pred.elev + conditional.pred.conifer
-ggsave(p1, filename=here("Results", "Figures", "zinb-elevation-conifer.jpg"), width=7, height=3, units="in")
+p1 <- conditional.pred.zero.elev +  conditional.pred.count.elev + conditional.pred.count.conifer + plot_layout(ncol=3) + plot_annotation(tag_levels = "A")
+ggsave(p1, filename=here("Results", "Figures", "zinb-elevation-conifer.jpg"), width=7, height=2.5, units="in")
 
 ```
 
-## Microsite drivers of aspen seedling establishment
+### Microsite drivers of aspen seedling establishment
 
-To understand if aspen seedlings preferentially established in different
-microsite conditions, we followed the approach outlined by Kreider and
-Yocom [-@kreider2021AspenSeedlingEstablishment]. Briefly, we first
-modeled the probability that aspen seedlings occur in each category of
-the predictor variable using a mixed effect multinomial logistic
-regression. We then modeled the probability that systematically surveyed
-points occurred in each category of the variable. We used these two
-models to quantify microsite preference following methods outlined by
-Krieder and Yocom (2021) .
+To understand if aspen seedlings preferentially established in different microsite conditions, we followed the approach outlined by Kreider and Yocom [-@kreider2021AspenSeedlingEstablishment]. Briefly, we first modeled the probability that aspen seedlings occur in each category of the predictor variable using a mixed effect multinomial logistic regression that included a random intercept term of site identity. We then modeled the probability that systematically surveyed points occurred in each category of the variable, also using a using a mixed effect multinomial logistic regression that included a random intercept term of site identity. We used these two models to quantify microsite preference following methods outlined by Krieder and Yocom [-@kreider2021AspenSeedlingEstablishment], where:
 
-Here, preference values greater than zero indicate seedlings established
-in that microsite condition more often than expected. Multinomial
-regression was performed in R (R Core Team 2024) using the mclogit
-package (Elff 2022).
+$$
+preference = \frac{P(occurence) - P(availabilty)}{P(availability)}
+$$
 
+and *P(occurrence)* is the probability of seedling occurring in a given microsite condition and *P(availability*) is the probability of a given microsite condition is available. Here, preference values greater than zero indicate seedlings established in that microsite condition more often than expected based on the systematic sample. Multinomial regression was performed in R [@rcoreteam2024LanguageEnvironmentStatistical] using the *mclogit* package [@mclogit].
 
-
-```{r, results=F}
-library(mclogit)
+```{r preference, results=F, message=F, warning=F}
 pref <- function(mod.seedling, mod.random, levelz, variable=NA){
-  mod.seedling.prob <- lapply(predict(mod.seedling, type="response", se.fit=T), colMeans)
+  mod.seedling.prob <- lapply(predict(mod.seedling, type="response", se.fit=T, conditional=F), colMeans)
   mod.seedling.prob <- data.frame(estimate=mod.seedling.prob$fit, se=mod.seedling.prob$se.fit) %>% mutate(upper=estimate+se, lower=estimate-se)
   if(length(which(!levelz %in% row.names(mod.seedling.prob)))>0){
     mod.seedling.prob2 <- data.frame(estimate=0, se=0, upper=0, lower=0)
@@ -445,7 +492,7 @@ pref <- function(mod.seedling, mod.random, levelz, variable=NA){
   mod.seedling.prob$varz <- row.names(mod.seedling.prob)
   mod.seedling.prob <- mod.seedling.prob %>% arrange(varz) %>% dplyr::select(-varz)
   
-   mod.random.prob <- lapply(predict(mod.random, type="response", se.fit=T), colMeans)
+  mod.random.prob <- lapply(predict(mod.random, type="response", se.fit=T, conditional=F), colMeans)
   mod.random.prob <- data.frame(estimate=mod.random.prob$fit, se=mod.random.prob$se.fit) %>% mutate(upper=estimate+se, lower=estimate-se)
  
   mod.random.prob$varz <- row.names(mod.random.prob)
@@ -473,7 +520,7 @@ sitemicro.dat.sub <- sitemicro.dat %>% filter(Site %in% seedlingmicro.dat$Site)
 # Substrate
 Substrate.seedling.mod<- mblogit(Substrate~ 1, random = ~1|Site, data = seedlingmicro.dat, method="PQL", control=mmclogit.control(inner.optimizer="BFGS"), na.action=na.omit)
 Substrate.random.mod<- mblogit(Substrate~ 1, random = ~1|Site, data =  sitemicro.dat.sub, method="PQL", control=mmclogit.control(inner.optimizer="BFGS"), na.action=na.omit)
-Substrate.pref <- pref(Substrate.seedling.mod, Substrate.random.mod,  levelz=levels(sitemicro.dat$Substrate), variable="Substrate")
+Substrate.pref <- pref(mod.seedling=Substrate.seedling.mod, mod.random=Substrate.random.mod,  levelz=levels(sitemicro.dat$Substrate), variable="Substrate")
 
 # Large topography
 Large.Topo.seedling.mod<- mblogit(Large.Topo~ 1, random = ~1|Site, data = seedlingmicro.dat, method="PQL", control=mmclogit.control(inner.optimizer="BFGS"), na.action=na.omit)
@@ -492,7 +539,7 @@ CWD.pref  <- pref(CWD.seedling.mod, CWD.random.mod,  levelz=levels(sitemicro.dat
 
 perf.dat <- bind_rows(Substrate.pref$preference, Large.Topo.pref$preference, Small.Topo.pref$preference, CWD.pref$preference)
 
-raw.dat <-  bind_rows(Substrate.pref$seedling, Large.Topo.pref$seedling, Small.Topo.pref$seedling, CWD.pref$seedling, Substrate.pref$random, Large.Topo.pref$random, Small.Topo.pref$random, CWD.pref$random) 
+raw.dat <-  bind_rows(Substrate.pref$seedling, Large.Topo.pref$seedling, Small.Topo.pref$seedling, CWD.pref$seedling, Substrate.pref$random, Large.Topo.pref$random, Small.Topo.pref$random, CWD.pref$random) %>% mutate(observation=factor(observation, levels=c("seedling", "random"), labels=c("occurrence", "availability")))
 
 perf.dat.high <- perf.dat%>% filter(estimate>=1.75) %>% mutate(x="high")
 perf.dat.low <- perf.dat %>% filter(estimate<1.75) %>% mutate(x="low",estimate=estimate*9, lower=lower*9, upper=upper*9)
@@ -509,191 +556,108 @@ p12 <- p1 +p2 +plot_layout(guides = "collect",nrow=2)&theme(legend.position = "b
 ggsave(p12, filename=here("Results", "Figures", "MicrositePreference.jpg"), width=7, height=5, units="in")
 ```
 
-## Leading indicators of recruitment
-
-```{r, eval=F}
-p1 <- compiled.microsite.plot %>% mutate(Browse=factor(Browse, levels=c(0,1), labels=c("not browsed", "browsed"))) %>%  ggplot(aes(x=Height, fill=Browse)) + geom_density(alpha=0.5)+xlab("Height (cm)")+ylab("Density")+theme(legend.position = "bottom")+theme(legend.title = element_blank())+scale_fill_manual(values=c("#2166ac", "#d6604d"))
-
-ggsave(p1, filename=here("Results", "Figures", "Height-browse.jpg"), width=3.5, height=3, units="in")
-
-height.data <- compiled.microsite.plot %>% group_by(Site, Transect, Subplot) %>% summarize(Height=mean(Height))
-
-# summarize height data by subplot
-height.data <- left_join(height.data, compiled.site.plot, by="Site")
-
-height.lmer.full <- lmer(log(Height)~scale(Elevation) + scale(FoldedAspect) + scale(Slope) + scale(Herb) + scale(Conifer.density) + (1|Site), data= height.data)
-
-modz <- list(
-  # drop elevation
-   lmer(log(Height)~scale(FoldedAspect) + scale(Slope) + scale(Herb) + scale(Conifer.density) + (1|Site), data= height.data),
-   # drop aspect
-  lmer(log(Height)~scale(Elevation) + scale(Slope) + scale(Herb) + scale(Conifer.density) + (1|Site), data= height.data),
-  # drop slope
-lmer(log(Height)~scale(Elevation) + scale(FoldedAspect) + scale(Herb) + scale(Conifer.density) + (1|Site), data= height.data),
- # drop herb
- lmer(log(Height)~scale(Elevation) + scale(FoldedAspect) + scale(Slope) + scale(Conifer.density) + (1|Site), data= height.data),
-  # drop conifer seedling
-  lmer(log(Height)~scale(Elevation) + scale(FoldedAspect) + scale(Slope) + scale(Herb) + (1|Site), data= height.data)
-
-)
-
-res1 <- do.call(rbind, lapply(modz, compared, full=height.lmer.full)) %>% mutate(Predictor=c("Elevation", "Aspect", "Slope", "Herb", "Conifer"))
-
-
-```
-
 # Results
 
-## Post-fire establishment within the Cameron Peak Fire
+## Post-fire seedling establishment within the Cameron Peak Fire
 
-Despite the absence of mature aspen in the pre-fire stand, aspen
-seedlings were present at
-`r round(seedlingdensity.plot %>% filter(POTR5.seedling.density>0) %>% nrow() / nrow(site.dat) *100, 0)`%
-of sites
-(n=`r seedlingdensity.plot %>% filter(POTR5.seedling.density>0) %>% nrow()`
-sites; Fig. \@ref(fig:FigPostFireComp)). Across plots with aspen
-seedlings, density averaged
-`r seedlingdensity.tph %>% filter(POTR5.seedling>0)%>% pull(POTR5.seedling) %>% mean()  %>% round(0)`
-seedlings per hectare, but was highly variable and ranged between
-`r seedlingdensity.tph %>% filter(POTR5.seedling>0)%>% pull(POTR5.seedling) %>% min()`
-and `r seedlingdensity.tph %>% pull(POTR5.seedling) %>% max()` seedlings
-per hectare. Within plots with aspen seedlings, on average only
-`r (stocking.plot %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% mean()/ 50 *100) %>% round(1)`%
-of the fifty 2 x 2 m subplots contained seedlings
-(mean:`r stocking.plot %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% mean()  %>% round(1)`
-subplots;
-range=`r stocking.plot %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% min()` -
-`r stocking.plot %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% max()`
-subplots). Within subplots with aspen seedlings, we observed between
-`r seedlingdensity.dat %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% min()/4`
-and
-`r seedlingdensity.dat %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% max()/4`
-seedlings per square meter
-(mean=`r (seedlingdensity.dat %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% mean()/4) %>% round(2)`
-seedlings per square meter). While all sites lacked mature aspen prior
-to the fire, we observed aspen suckers at
-`r seedlingdensity.tph %>% filter(POTR5.sucker>0) %>% nrow()` site.
+Across sites that were dominated by conifers prior to fire and then severely burned, we found limited seedling regeneration two years following fire (Table \@ref(tab:seedlingdensity)). Aspen seedlings were present at `r (seedlingdensity.tph %>% filter(POTR5.seedling>0) %>% nrow() / nrow(seedlingdensity.tph) *100) %>% round(0)`% of plots, with a mean density of `r seedlingdensity.tph %>% filter(POTR5.seedling>0) %>%  pull(POTR5.seedling) %>% mean() %>% round(0)` seedlings per hectare. Conifer seedlings were present at a similar proportion of sites (`r (seedlingdensity.tph %>% filter(Conifer>0) %>% nrow() / nrow(seedlingdensity.tph) *100) %>% round(0)`% of plots), but at a lower density on average when present (Table \@ref(tab:seedlingdensity)).
 
-Post-fire conifer regeneration was limited two years following fire
-(Fig. \@ref(fig:FigPostFireComp)). Conifer seedlings were found at
-`r (seedlingdensity.tph %>% filter(Conifer>0) %>% nrow() / nrow(seedlingdensity.tph) *100) %>% round(0)`%
-of plots, with a mean density of
-`r seedlingdensity.tph %>% pull(Conifer) %>% mean() %>% round(0)`
-seedlings per hectare. Within plots with conifer seedlings, on average
-only
-`r (stocking.plot %>% filter(Conifer>0) %>% pull(Conifer) %>% mean()/ 50 *100) %>% round(1)`%of
-the fifty 2 x 2 m subplots contained seedlings
-(mean=`r stocking.plot %>% filter(Conifer>0) %>% pull(Conifer) %>% mean()  %>% round(1)`
-subplots;
-range=`r stocking.plot %>% filter(Conifer>0) %>% pull(Conifer) %>% min()`
--`r stocking.plot %>% filter(Conifer>0) %>% pull(Conifer) %>% max()`
-subplots). Within subplots with conifer seedlings, we observed between
-`r seedlingdensity.dat %>% filter(Conifer>0) %>% pull(Conifer) %>% min()/4`
-and
-`r seedlingdensity.dat %>% filter(Conifer>0) %>% pull(Conifer) %>% max()/4`
-seedlings per square meter
-(mean=`r (seedlingdensity.dat %>% filter(Conifer>0) %>% pull(Conifer) %>% mean()/4) %>% round(2)`
-seedlings per square meter). Lodgepole pine seedlings were most common
-and were present at
-`r (seedlingdensity.tph %>% filter(PICO>0) %>% nrow() / nrow(seedlingdensity.tph)*100) %>% round()`%
-of sites, nearly all of which had lodgepole pine in the pre-fire
-community. When lodgepole seedlings were present, density averaged
-`r (seedlingdensity.tph %>% filter(PICO>0) %>% pull(PICO) %>% mean()) %>% round(1)`
-seedlings per hectare
-(range:`r seedlingdensity.tph %>% filter(PICO>0) %>% pull(PICO) %>% min()`
--`r seedlingdensity.tph %>% filter(PICO>0) %>% pull(PICO) %>% max()`
-seedlings per hectare). While subalpine fir and Engelmann spruce were
-common at our study sites prior to fire, we found very limited
-regeneration of either species. Subalpine fir regeneration occurred at
-one site with a density of
-`r seedlingdensity.tph %>% filter(ABLA>0) %>% pull(ABLA) %>% mean()`
-seedlings per hectare. Engelmann spruce regeneration occurred at
-`r seedlingdensity.tph %>% filter(PIEN>0) %>% nrow()` sites and when
-present averaged
-`r seedlingdensity.tph %>% filter(PIEN>0) %>% pull(PIEN) %>% mean()`
-seedlings per hectare
-(range=`r seedlingdensity.tph %>% filter(PIEN>0) %>% pull(PIEN) %>% min()` -
-`r seedlingdensity.tph %>% filter(PIEN>0) %>% pull(PIEN) %>% max()`
-seedlings per hectare). Prior to the fire, ponderosa pine was present at
-`r overstory %>% filter(PIPO>0) %>% nrow()` sites and of these sites we
-found ponderosa pine seedlings at
-`r comp %>% filter(name=="PIPO" & combo=="present pre- &\npost-fire") %>% pull(freq)`
-sites with an average density of
-`r seedlingdensity.tph %>% filter(PIPO>0) %>% pull(PIPO) %>% mean() %>% round()`
-seedlings per hectare
-(range:`r seedlingdensity.tph %>% filter(PIPO>0) %>% pull(PIPO) %>% min()` -
-`r seedlingdensity.tph %>% filter(PIPO>0) %>% pull(PIPO) %>% max()`
-seedlings per hectare). Finally, Douglas fir was present at
-`r overstory %>% filter(PSME>0) %>% nrow()` sites prior to the fire, but
-absent from all sites following fire (Fig. \@ref(fig:FigPostFireComp)).
+```{r tab.cap='Post-fire seedling density for plots with seedlings present.', tab.id='seedlingdensity'}
+comp1.summary %>% mutate(mean=round(mean, 0)) %>%  qflextable() %>% set_table_properties(layout = "autofit", width=0.5) %>% fontsize(size = 10)
+```
 
-```{r FigPostFireComp, fig.cap="Patterns of post-fire establishment by pre-fire composition.", fig.height=3, fig.width=5, eval=T}
+Generally, the conifer species present in the post-fire community reflected the pre-fire community. Lodgepole pine seedlings were present at `r comp.presence %>% filter(name=="PICO" &combo=="present") %>% pull(round(percent))`% of sites were lodgepole was present prior to fire (Fig. \@ref(fig:FigPostFireComp)). In contrast, Engelmann spruce and subalpine fir seedlings were only present at `r comp.presence %>% filter(name=="PIEN" &combo=="present") %>% pull(round(percent))`% and `r comp.presence %>% filter(name=="ABLA" &combo=="present") %>% pull(round(percent))`% of sites where they occurred prior to fire. Ponderosa pine occurred at `r comp.presence %>% filter(name=="PIPO" &combo=="present") %>% pull(round(percent))`% of sites and Douglas fir seedlings were entirely absent post-fire; however, the sample size for both species was small (n~ponderosa pine~=`r comp2 %>% group_by(name) %>% summarize(sum=sum(presence)) %>% filter(name=="PIPO") %>% pull(sum)` sites; n~Douglas fir~=`r comp2 %>% group_by(name) %>% summarize(sum=sum(presence)) %>% filter(name=="PSME") %>% pull(sum)` sites). Post-fire seedlings of lodgepole pine and Engelmann spruce were both observed at one plot where they were absent in the pre-fire community (Fig. \@ref(fig:FigPostFireComp)).
+
+```{r FigPostFireComp, fig.cap="Patterns of post-fire species presence by pre-fire species presence.", fig.height=3, fig.width=5, eval=T}
 knitr::include_graphics(here("Results", "Figures", "PostFireComposition.jpg"))
 ```
 
-## Environmental drivers of post-fire aspen seedling establishment
+## Clustering
 
-Our model correctly predicted
-`r round(site.mod.01 %>% filter(predict01==1 & POTR5.seedling01==1) %>% pull(prop)*100)`%
-of the sites where aspen seedlings were observed
-(`r site.mod.01 %>% filter(predict01==1 & POTR5.seedling01==1) %>% pull(n)`
-of the
-`r site.mod.01 %>% filter(POTR5.seedling01==1) %>% pull(n) %>% sum()`
-sites without aspen seedlings), but only
-`r round(site.mod.01 %>% filter(predict01==0 & POTR5.seedling01==0) %>% pull(prop)*100)`
-% of the absences
-(`r site.mod.01 %>% filter(predict01==0 & POTR5.seedling01==0) %>% pull(n)`
-of the
-`r site.mod.01 %>% filter(POTR5.seedling01==0) %>% pull(n) %>% sum()`
-sites without aspen seedlings).
+Within plots with aspen seedlings, on average `r (stocking.plot %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% mean()/ 50 *100) %>% round(1)`% of the fifty 2 x 2 m subplots contained aspen seedlings (mean=`r stocking.plot %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% mean()  %>% round(1)` subplots; range=`r stocking.plot %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% min()` - `r stocking.plot %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% max()` subplots). About `r ((seedlingdensity.dat %>% filter(POTR5.seedling>1) %>% nrow()) / (seedlingdensity.dat %>% filter(POTR5.seedling>0) %>% nrow()) *100) %>% round()`% of aspen seedlings occurred in subplots with another aspen seedling, with densities ranging from `r seedlingdensity.dat %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% min()/4` to `r seedlingdensity.dat %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% max()/4` seedlings per square meter (mean=`r (seedlingdensity.dat %>% filter(POTR5.seedling>0) %>% pull(POTR5.seedling) %>% mean()/4) %>% round(2)` seedlings per square meter). Across the `r csr.res.aspen %>% nrow()` sites with at least 1,000 aspen seedlings per hectare, aspen seedlings were significantly (p\<0.05) clustered at all sites (Table S\@ref(tab:Tabcsraspen)).
 
-Overall, our model explained about `r site.mod.r2*100` % of the
-variation in seedling density across the plots.
+Within plots with conifer seedlings, on average only `r (stocking.plot %>% filter(Conifer>0) %>% pull(Conifer) %>% mean()/ 50 *100) %>% round(1)`% of the fifty 2 x 2 m subplots contained seedlings (mean=`r stocking.plot %>% filter(Conifer>0) %>% pull(Conifer) %>% mean()  %>% round(1)` subplots; range=`r stocking.plot %>% filter(Conifer>0) %>% pull(Conifer) %>% min()` - `r stocking.plot %>% filter(Conifer>0) %>% pull(Conifer) %>% max()` subplots). About `r ((seedlingdensity.dat %>% filter(Conifer>1) %>% nrow()) / (seedlingdensity.dat %>% filter(Conifer>0) %>% nrow()) *100) %>% round()`% of conifer seedlings occurred in subplots with another conifer seedling and densities for subplots with conifer seedlings varied between `r seedlingdensity.dat %>% filter(Conifer>0) %>% pull(Conifer) %>% min()/4` to `r seedlingdensity.dat %>% filter(Conifer>0) %>% pull(Conifer) %>% max()/4` seedlings per square meter (mean=`r (seedlingdensity.dat %>% filter(Conifer>0) %>% pull(Conifer) %>% mean()/4) %>% round(2)` seedlings per square meter). We found multiple ponderosa pine seedlings in `r ((seedlingdensity.dat %>% filter(PIPO>1) %>% nrow()) / (seedlingdensity.dat %>% filter(PIPO>0) %>% nrow()) *100) %>% round()`% of subplots with ponderosa pine seedlings, multiple lodgepole pine in `r ((seedlingdensity.dat %>% filter(PICO>1) %>% nrow()) / (seedlingdensity.dat %>% filter(PICO>0) %>% nrow()) *100) %>% round()`% of subplots with lodgepole pine seedlings, multiple Engelmann spruce in `r ((seedlingdensity.dat %>% filter(PIEN>1) %>% nrow()) / (seedlingdensity.dat %>% filter(PIEN>0) %>% nrow()) *100) %>% round()`% of subplots with Engelmann spruce, and multiple subalpine fir in `r ((seedlingdensity.dat %>% filter(ABLA>1) %>% nrow()) / (seedlingdensity.dat %>% filter(ABLA>0) %>% nrow()) *100) %>% round()`% of subplots with subalpine fir. Across the `r csr.res.con %>% nrow()` sites with at least 1,000 conifer seedlings per hectare, conifer seedlings were significantly (p\<0.05) clustered at all sites (Table S\@ref(tab:Tabcsrcon)). Sites with at least 1,000 conifer seedlings per hectare were dominated by lodgepole pine, however at one of these sites we observed lodgepole and Engelmann spruce co-occurring in three of the seven subplots where spruce was present.
 
-```{r zinbsummary,  tab.cap='Summary of zero-inflated negative binomial model results for absence (zero model) and abundance (count model) of post fire aspen stems. Model results are standardized beta coefficients, standard errors (SE), z scores, and p values.', tab.id='zinbsummary'}
-ft <- qflextable(site.mod.final.summary.print)
-ft %>%  set_table_properties(layout = "autofit", width=1)
+We also found that conifer seedlings were significantly (p\<0.05) more likely to occur in subplots with aspen than expected by complete spatial randomness (Table S\@ref(tab:Tabcsrconaspen)). However, only two sites had sufficient densities of both aspen and conifer seedlings to test this hypothesis. At these sites we found most (`r round((seedlingdensity.dat %>% filter(Site==38) %>% filter(Conifer>0 & POTR5.seedling>0) %>% nrow())  / (seedlingdensity.dat %>% filter(Site==38) %>% filter(Conifer>0) %>% nrow()) *100)` - `r round((seedlingdensity.dat %>% filter(Site==25) %>% filter(Conifer>0 & POTR5.seedling>0) %>% nrow())  / (seedlingdensity.dat %>% filter(Site==25) %>% filter(Conifer>0) %>% nrow()) *100)`%) of the subplots with conifer seedlings also had aspen seedlings. Most of this co-occurrence included lodgepole pine; `r seedlingdensity.dat %>% filter(Site==25|Site==38) %>% filter(PICO>0 & POTR5.seedling>0) %>% nrow()` out of `r seedlingdensity.dat %>% filter(Site==25|Site==38) %>% filter(PICO>0) %>% nrow()` subplots had both lodgepole pine and aspen seedlings. However, Engelmann spruce co-occurred with aspen seedlings in three of the seven subplots where spruce seedlings were present.
+
+## Site-level drivers of post-fire aspen seedling density
+
+Site-level variability in bioclimatic conditions influenced the density of aspen seedlings observed two-years following the Cameron Peak fire. Our model of aspen seedling density explained a moderate amount of the variation (pseudo R^~2~^= `r site.mod.r2`) and correctly predicted `r round(site.mod.01 %>% filter(predict01==1 & POTR5.seedling01==1) %>% pull(prop)*100)`% of the sites where aspen seedlings were observed (`r site.mod.01 %>% filter(predict01==1 & POTR5.seedling01==1) %>% pull(n)` of the `r site.mod.01 %>% filter(POTR5.seedling01==1) %>% pull(n) %>% sum()` sites with aspen seedlings), but only `r round(site.mod.01 %>% filter(predict01==0 & POTR5.seedling01==0) %>% pull(prop)*100)` % of the absences (`r site.mod.01 %>% filter(predict01==0 & POTR5.seedling01==0) %>% pull(n)` of the `r site.mod.01 %>% filter(POTR5.seedling01==0) %>% pull(n) %>% sum()` sites without aspen seedlings). In the zero component of the model, only elevation was the only significant predictor (Table \@ref(tab:zinbsummary)). Plots without aspen seedlings occurred at lower elevations (standardized β = `r zinb.coef %>% filter(Component=="Zero" & Predictor=="Elevation") %>% pull(Estimate)`; standard error = `r zinb.coef %>% filter(Component=="Zero" & Predictor=="Elevation") %>% pull(4)`; Fig. \@ref(fig:FigDensity)). In the count component of the model, elevation and the density of conifer seedlings were significantly related to aspen seedling density (p\<0.05; Table \@ref(tab:zinbsummary)). Fig. \@ref(fig:FigDensity)B-D). Density increased with elevation (standardized β = `r zinb.coef %>% filter(Component=="Count" & Predictor=="Elevation") %>% pull(Estimate)`; standard error = `r zinb.coef %>% filter(Component=="Count" & Predictor=="Elevation")%>% pull(4)`; Fig. \@ref(fig:FigDensity)B). Aspen seedling density also increased with the natural log of conifer seedling density (standardized β = `r zinb.coef %>% filter(Component=="Count" & Predictor=="Conifer seedling density") %>% pull(Estimate)`; standard error = `r zinb.coef %>% filter(Component=="Count" & Predictor=="Conifer seedling density") %>% pull(4)`; Fig. \@ref(fig:FigDensity)C).
+
+```{r zinbsummary, tab.cap='Summary of zero-inflated negative binomial model selection results for absence (zero model) and abundance (count model) of post fire aspen stems. χ2 test statistics and p-values are from likelihood ratio tests comparison the full model to a reduced model where the focal predictor is dropped. AIC values are for the reduced model (i.e., higher AIC indicates removing this variable reduces model fit).', tab.id='zinbsummary'}
+zinb.comparison  %>% 
+  mutate(p=ifelse(p==0.000, "<0.001", p)) %>% 
+  qflextable() %>%  
+  set_table_properties(layout = "autofit", width=0.75) %>% fontsize(size = 10)
 ```
 
-```{r FigDensity, fig.cap="Patterns of post-fire establishment by pre-fire composition.", fig.height=3, fig.width=7, eval=T}
+<br/>
+
+```{r FigDensity, fig.cap="The predicted effects of elevation (A-B) and conifer seedling density (C) on patterns of aspen seedling density across the Cameron Peak fire. In all panels, the shading illustrates the 95% confidence interval.", fig.height=2.5, fig.width=7, eval=T}
 knitr::include_graphics(here("Results", "Figures", "zinb-elevation-conifer.jpg"))
 ```
 
-```{r FigMicro, fig.cap="Microsite preferences", fig.height=5, fig.width=7, eval=T}
+## Microsite drivers of post-fire aspen seedling establishment
+
+Within sites with aspen seedlings, we found microsite conditions were important predictors of aspen seedling establishment (Fig. \@ref(fig:FigMicro)). Notably, aspen seedlings were about `r (perf.dat.combo %>% filter(level=="bryophytes") %>% pull(estimate)) %>% round(1)` times more likely to occur on bryophytes than any other substrate type. Seedlings also preferentially established in large and small concavities, with preferences of `r (perf.dat.combo %>% filter(level=="concave" & variable=="Large topography") %>% pull(estimate)) %>% round(1)` and `r (perf.dat.combo %>% filter(level=="concave" & variable=="Small topography") %>% pull(estimate)) %>% round(1)`, respectively. Finally, aspen seedlings were more likely to establish in microsites near large CWD than microsites with small CWD, small and large CWD, or no CWD (preference for large CWD = `r perf.dat.combo %>% filter(variable=="CWD" & level=="large") %>% pull(estimate) %>% round(1)`)
+
+```{r FigMicro, fig.cap="Aspen seedlings preferentially establish within certain microsites conditions. (A) Positive (black) and negative (blue) modeled aspen seedling microsite preferences. (B) Modeled probabilities of seedling occurrence in a given microsite condition (green) and the probability a given microsite condition is available (dark gray). In both A and B, error bars illustrate one standard error. Note that the y-axis in the substrate panel in part A is broken to better show the data.", fig.height=5, fig.width=7, eval=T}
 knitr::include_graphics(here("Results", "Figures", "MicrositePreference.jpg"))
 ```
 
-## Leading indicators of potential recruitment
+# Discussion
 
-```{r FigHeight, fig.cap="Patterns of post-fire establishment by pre-fire composition.", fig.height=3, fig.width=3.5, eval=T}
-knitr::include_graphics(here("Results", "Figures", "Height-browse.jpg"))
-```
+Here we found widespread, but highly variable establishment of aspen seedlings across conifer forests that burned at high severity during the Cameron Peak Fire, despite the absence of aspen in the pre-fire stand. Aspen seedlings were more likely to occur at higher elevations, where they were often clustered within concave microsites, on bryophyte substrates, and near large coarse woody debris. Collectively, this adds to the support for the idea that cooler and wetter climate conditions promote aspen seedling establishment in recently burned ecosystems [@quinn2001QuakingAspenReproduce; @buma2012DifferentialSpeciesResponses; @kreider2021LowdensityAspenSeedling; @kreider2021AspenSeedlingEstablishment]. We also found aspen seedlings were more likely to occur at sites with greater post-fire conifer seedling densities, consistent with previous research which has highlighted the potential for aspen to expand into recently burned conifer forests and shape the dynamics of burned ecosystems [@gill2017PopulusTremuloidesSeedling; @nigro2022WildfireCatalyzesUpward].
 
-## Browsing
+## Distribution and abundance of aspen and conifer seedlings
 
-Across our study sites, only
-`r (seedlingmicro.dat %>% filter(Browse==1) %>% nrow() / seedlingmicro.dat %>% nrow()*100) %>% round()`%
-of seedlings had visible evidence of browsing (n=
-`r seedlingmicro.dat %>% filter(Browse==1) %>% nrow()` seedlings).
-Nonetheless evidence of browsing was present at
-`r round(seedlingmicro.dat %>% filter(Browse==1) %>% pull(Site) %>% unique() %>%  length() / seedlingmicro.dat %>% pull(Site) %>% unique() %>% length(), 2) *100`%
-of sites with aspen seedlings (n=
-`r seedlingmicro.dat %>% filter(Browse==1) %>% pull(Site) %>% unique() %>%  length()`
-sites).
+Across the Cameron Peak fire, we found aspen seedlings at `r (seedlingdensity.tph %>% filter(POTR5.seedling>0) %>% nrow() / nrow(seedlingdensity.tph) *100) %>% round(0)`% of sites surveyed. This occupancy rate is similar to the highest fire-level occupancy rates reported by Kreider and Yocom [-@kreider2021LowdensityAspenSeedling], who sampled 15 fires spanning a latitudinal gradient from northern Arizona to northern Wyoming. Across these plots they reported aspen seedlings in only 13% of plots, with occupancy rate for individual fires events varying from 0 to 61% [@kreider2021LowdensityAspenSeedling]. In the case of the Cameron Peak fire, the high occupancy rates may be attributed to our sampling design, which included a larger area than Kreider and Yocom [-@kreider2021LowdensityAspenSeedling] and excluded areas that burned at low or moderate severity, where seedling establishment is less likely [@turner2003PostfireAspenSeedling]. The high occupancy rates may also reflect characteristics of the burned landscape (e.g., elevation) and weather conditions following the fire event.
 
-When browsing occurred within a site, on average
-`r round(seedlingmicro.dat %>% group_by(Site, Browse) %>% summarise(n = n()) %>% mutate(freq=n/sum(n)) %>% filter(Browse==1) %>% pull(freq) %>% mean() *100)`%
-of seedlings were browsed (range:
-`r round(seedlingmicro.dat %>% group_by(Site, Browse) %>% summarise(n = n()) %>% mutate(freq=n/sum(n)) %>% filter(Browse==1) %>% pull(freq) %>% min() *100)` -
-`r round(seedlingmicro.dat %>% group_by(Site, Browse) %>% summarise(n = n()) %>% mutate(freq=n/sum(n)) %>% filter(Browse==1) %>% pull(freq) %>% max() *100)`%).
-Within subplots with browsing, on average
-`r round(seedlingmicro.dat %>% group_by(Site, Subplot, Browse) %>% summarise(n = n()) %>% mutate(freq=n/sum(n)) %>% filter(Browse==1) %>% pull(freq) %>% mean() *100)`%
-of seedlings within a subplot were browsed (range:
-`r round(seedlingmicro.dat %>% group_by(Site, Subplot, Browse) %>% summarise(n = n()) %>% mutate(freq=n/sum(n)) %>% filter(Browse==1) %>% pull(freq) %>% min() *100)` -
-`r round(seedlingmicro.dat %>% group_by(Site, Subplot, Browse) %>% summarise(n = n()) %>% mutate(freq=n/sum(n)) %>% filter(Browse==1) %>% pull(freq) %>% max() *100)`%).
-At both the site and subplot level, the proportion of seedlings browsed
-increased with aspen seedling density, however these effects were only
-significant at the subplot level.
+In plots with aspen seedlings, our median density of `r seedlingdensity.plot %>% filter(POTR5.seedling.density>0) %>% pull(POTR5.seedling.density) %>% median()` seedlings ha^-1^ and maximum density of `r seedlingdensity.plot %>% pull(POTR5.seedling.density) %>% max()` seedlings ha^-1^ is comparable to median (range: 100-900; median across fires: 100 seedlings per ha^-1^) and maximum (range: 100-9700; median across fires: 150 seedlings ha^-1^) densities for the 15 fires surveyed by Kreider and Yocom [-@kreider2021LowdensityAspenSeedling]. However, post-fire establishment of aspen from seed can be extremely abundant. For example, following the 2017 Brian Head and the 1998 Yellowstone fires aspen seedling densities exceeded 150,000 seedlings ha^-1^ [@kaye2003AspenStructureVariability; @kreider2021AspenSeedlingEstablishment], respectively. Such dense post-fire establishment of aspen can have important implications for post-fire vegetation trajectories and rates. Yet, within the Cameron Peak fire only `r (compiled.site.plot %>% filter(POTR5.seedling>741) %>% nrow() / compiled.site.plot %>% filter(POTR5.seedling>0) %>% nrow()*100) %>% round(0)`% (n= `r compiled.site.plot %>% filter(POTR5.seedling>741) %>% nrow()`) of the plots with aspen seedlings surveyed here would meet local USFS requirements for restocking [741 seedlings per ha^-1^; @usfs19971997REVISIONLAND], and thus may have more limited effects on the post-fire ecology of this system.
+
+Two years following fire, we found relatively low regeneration of subalpine fir and Engelmann spruce, and to a lesser extent ponderosa pine and lodgepole pine despite their presence in the pre-fire community. These low densities may have been due to post-fire weather conditions, which have emerged as important constraints on post-fire germination and initial survival of conifer seedlings in recent decades [@stevens-rumann2019TreeRegenerationFollowing]. Additionally, viable seed may have been limited by pre-fire outbreaks of bark beetles [@andrus2021FutureDominanceQuaking; @rhoades2022LimitedSeedViability], which caused widespread and severe mortality across the study area in the beginning of the 21st century [@rodman2021EffectsBarkBeetle]. While infilling of burned areas with conifers seedlings can continue for decades following the fire, seedling densities two-years following fire are often good predictors of recruitment failure in conifer forests across the West [@stevens-rumann2018EvidenceDecliningForest]. Thus in the absence of human intervention, conifers may remain limited across the system.
+
+While aspen seedling regeneration was not incredibly abundant across the Cameron Peak burn scar, densities of aspen seedlings often exceeded densities of conifer seedlings. Here we found aspen seedlings were present at `r seedlingdensity.tph %>% filter(Conifer >0 & POTR5.seedling>0) %>% nrow() / seedlingdensity.tph %>% filter(Conifer >0) %>% nrow() *100 %>% round()`% of the sites with conifer seedlings and outnumbered conifer seedlings at `r (seedlingdensity.tph %>% filter(Conifer >0 & POTR5.seedling>0) %>% filter(POTR5>Conifer) %>% nrow() / seedlingdensity.tph %>% filter(Conifer >0 & POTR5.seedling>0)  %>% nrow() *100) %>% round()`% of these sites. Further aspen seedlings and conifer seedlings were more commonly found clustered together within a site than expected by complete spatial randomness, highlighting shared environmental conditions suitable for regeneration. The co-occurrence of aspen and conifer seedlings both across and within sites suggests that rates and trajectories of post-fire recovery may be shaped by competition between aspen and conifers.
+
+## Drivers of aspen seedling establishment
+
+Across our study sites, aspen seedling occurrence and density increased with elevation. Higher elevations are characterized by cooler summers and greater winter snowpack accumulation and retention, which lower moisture stress. Low elevation sites, in addition to already being at the lower bounds of aspen habitat suitability [@rehfeldt2009AspenClimateSudden], were also characterized by greater herbaceous cover, which may both out compete aspen seedlings and occupy the substrate preferred by seedlings [@kreider2021LowdensityAspenSeedling]. Nonetheless, we observed aspen seedlings as low as `r compiled.site.plot %>% filter(POTR5.seedling>0) %>% pull(Elevation) %>% min()` m, where annual precipitation averages `r compiled.site.plot %>% filter(Elevation==compiled.site.plot %>% filter(POTR5.seedling>0) %>% pull(Elevation) %>% min()) %>% pull(ppt) %>% round()` mm and mean daily temperature averages `r compiled.site.plot %>% filter(Elevation==compiled.site.plot %>% filter(POTR5.seedling>0) %>% pull(Elevation) %>% min()) %>% pull(tmean) %>% round(1)`°C. In comparison, Kreider and Yocom [-@kreider2021LowdensityAspenSeedling] reported post-fire aspen seedling establishment was unlikely where average annual precipitation values were less than 750 mm on average. Yet here we found `r compiled.site.plot %>% mutate(low=ifelse(ppt<775, "low", "high")) %>% filter(POTR5.seedling>0)  %>% group_by(low) %>% summarize(mean=mean(POTR5.seedling), median=median(POTR5.seedling), n=n()) %>% mutate(percent=round(n/sum(n)*100)) %>% filter(low=="low") %>% pull(percent)` % of sites with aspen seedlings normally received less than 750 mm precipitation annually. At these sites, microsite conditions controlling soil moisture maybe particularly important in controlling aspen regeneration.
+
+Contrary to previous research which clearly shows that aspen seedlings density is greater when live aspen trees are nearby [@kreider2021AspenSeedlingEstablishment; @kreider2021LowdensityAspenSeedling], our modeling did not support this expectation. This may because across the Cameron Peak fire, the distance from live aspen generally increased with elevation, largely because aspen were more common at lower elevations prior to the fire and fire severity increased with elevation (Fig. S.\@ref(fig:FigElevationxDist)). As result, sites with higher climatic suitability were typically at a greater distance from live seed sources. Such mismatches between landscape-patterns of climatic suitability and seed availability may limit the potential for aspen to expand into new habitats.
+
+At the microsite scale, seedling occurrence was related to the bryophyte cover, the presence of coarse woody debris and concave microtopography, which may have connections to the accumulation and retention of seeds, moisture, and nutrients [@kreider2021AspenSeedlingEstablishment; @fairweather2014AspenSeedlingEstablishment]. Fallen logs or other large debris and local concavities may serve to collect both seeds and moisture necessary for successful establishment and survival in the first 1-3 growing seasons [@fairweather2014AspenSeedlingEstablishment]. Importantly, microsite conditions favorable to aspen establishment were not evenly distributed across the fire. For example, we identified bryophytes as the dominant substrate at `r  sitemicro.dat %>% group_by(Substrate) %>% summarize(n=n()) %>% mutate(freq=round(n/sum(n)*100,0)) %>% filter(Substrate=="bryophytes") %>% pull(freq)`% of random samples, while we found `r seedlingmicro.dat %>% group_by(Substrate) %>% summarize(n=n()) %>% mutate(freq=round(n/sum(n)*100,0)) %>% filter(Substrate=="bryophytes") %>% pull(freq)`% of aspen seedlings had established on bryophytes. Understanding how suitable microsites are distributed across landscapes will be central to predicting post-fire regeneration of aspen and understanding how forest change following wildfire.
+
+# Conclusions
+
+# **List of abbreviations**
+
+# Declarations
+
+## Ethics approval and consent to participate
+
+Not applicable
+
+## Consent for publication
+
+Not applicable
+
+## Availability of data and material
+
+The datasets generated and/or analyzed during the current study are available in Dryad Research Data Repository, link (REF)
+
+## Competing interests
+
+The authors declare that they have no competing interests.
+
+## Funding
+
+## Authors' contributions
+
+**SVC**: conceptualization (equal); methodology (equal); data collection (lead); methods (supporting); writing - original draft (equal), writing - review and editing (equal); **SJH**: conceptualization (equal); methodology (equal); data collection (supporting); methods (lead); writing - original draft (equal), writing - review and editing (equal). All authors read and approved the final manuscript.
+
+## Acknowledgements
+
+We would like to thank Chuck Rhoades and Monique Rocca for feedback on earlier draft of this wok. Additionally, we would like to thank Colorado State University for supporting SVC.
 
 # References
 
@@ -704,12 +668,54 @@ significant at the subplot level.
 
 # Supplementary Material {#SuppMat}
 
-```{r zinbselection,  tab.cap='Summary of zero-inflated negative binomial model selection results for the zero and count parts of the model.', tab.id='zinbselection0'}
-ft <- qflextable(zinb.selection)
-ft %>%  set_table_properties(layout = "autofit", width=1)
+```{r Tabstudysites, tab.cap='Characteristics of study sites sampled within the Cameron Peak Fire. Annual precipitation and temperature values are 1991-2010 normals from PRISM (2021)', tab.lp="supp-tab", tab.cap.pre="Table S", tab.id='Tabstudysites'}
+compiled.site.plot %>% 
+  dplyr::select(Site, Latitude, Longitude, Elevation, tmean, ppt, distance.post,  POTR5.seedling, Conifer) %>% 
+  mutate(Latitude=round(Latitude, 3), Longitude=round(Longitude,3), tmean=round(tmean, 1), ppt=round(ppt,0), Elevation=round(Elevation,0), distance.post=round(distance.post,0)) %>% 
+  set_colnames(c("Site", "Latitude\n(°N)", "Longitude\n(°W)", "Elevation (m)", "Mean annual temperature\n(°C)", "Mean annual precipitation\n(mm)","Distance to live aspen\n(m)", "Aspen seedling density\n(no. per ha)",  "Conifer seedling density\n(no. per ha)")) %>% 
+  qflextable() %>%  
+  set_table_properties(layout = "autofit", width=1, align = "center") %>% fontsize(size = 10)
 ```
 
-```{r fig.id="CameronPeak-Patterns",fig.cap=" ", fig.cap.pre="Figure S", fig.lp="supp-fig", fig.width=5, fig.height=4}
-knitr::include_graphics(here("Results", "Figures", "CameronPeak-patterns.jpg"))
+\pagebreak
 
+```{r Tabcsraspen, tab.cap='Summary of tests of complete spatial randomness for aspen seedlings.', tab.lp="supp-tab", tab.cap.pre="Table S", tab.id='Tabcsraspen'}
+csr.res.aspen %>% mutate(chisquared=round(chisquared,1)) %>% dplyr::select(Site, density, chisquared, p) %>% set_colnames(c("Site", "density", "χ2", "p")) %>% set_colnames(c("Site", "density\n(no. per ha)", "χ2", "p")) %>% 
+  qflextable() %>%  
+  set_table_properties(layout = "autofit", width=0.5, align = "center") %>% fontsize(size = 10)
+```
+
+<br/>
+
+```{r Tabcsrcon, tab.cap='Summary of tests of complete spatial randomness for conifer seedlings.', tab.lp="supp-tab", tab.cap.pre="Table S", tab.id='Tabcsrcon'}
+csr.res.con %>% mutate(chisquared=round(chisquared,1)) %>% dplyr::select(Site, density, chisquared, p) %>% set_colnames(c("Site", "density", "χ2", "p")) %>% set_colnames(c("Site", "density\n(no. per ha)", "χ2", "p")) %>% 
+  qflextable() %>%  
+  set_table_properties(layout = "autofit", width=0.5, align = "center") %>% fontsize(size = 10)
+```
+
+<br/>
+
+```{r Tabcsrconaspen, tab.cap='Summary of tests of independence of aspen and conifer seedlings.', tab.id='Tabcsrconaspen', tab.cap.pre="Table S"}
+csr.res.con.aspen %>% dplyr::select(Site, con.density,POTR5.density, chisquared, p) %>% set_colnames(c("Site", "conifer density", "aspen density","χ2", "p")) %>% set_colnames(c("Site", "conifer density\n(no. per ha)", "aspen density\n(no. per ha)", "χ2", "p")) %>% 
+  qflextable() %>%  
+  set_table_properties(layout = "autofit", width=0.5, align = "center") %>% fontsize(size = 10)
+```
+
+```{r FigZinbResids, fig.cap="Residual diagnostic plots from the zero-inflated negative binomial model of aspen seedling density. Plots were generated using the DHARMa package (Hartig 2024)", fig.cap.pre="Figure S", fig.lp="supp-fig", fig.width=4.5, fig.height=3.5, fig.id="FigZinbResids"}
+knitr::include_graphics(here("Results", "figures", "zinb-residuals.jpg"))
+```
+
+```{r FigZinbResidsxPreds, fig.cap="Plots of the simulated residuals from the zero-inflated negative binomial model of aspen seedling density as a function of elevation (left) and conifer seedling density (right). Plots were generated using the DHARMa package (Hartig 2024)", fig.cap.pre="Figure S", fig.lp="supp-fig",fig.width=4.5, fig.height=3.5,fig.id="FigZinbResidsxPreds"}
+knitr::include_graphics(here("Results", "Figures", "zinb-residualsxpredictors.jpg"))
+```
+
+```{r FigElevationxDist, fig.cap="The relationship between elevation and aspen's distribution across the area burned in the Cameron Peak Fire. A) Boxplots comparing the elevation range of areas with and without aspen prior to the fire. B) Boxplots comparing the elevation by fire severity. C) The density of observations for areas that burned in the Cameron Peak fire that were greater than 50 m from live aspen and less than 1000 km from live aspen prior to the fire by elevation and distance to seed source.", fig.lp="supp-fig", fig.cap.pre="Figure S", fig.id="FigElevationxDist", fig.width=7, fig.height=2.5}
+p1 <- study.area.CP %>% filter(distance.pre <1000 & distance.pre>50) %>% ggplot(aes(x=elevation, y=distance.post))+stat_binhex(aes(fill= ..density..))+scale_fill_viridis_b(name="density") +ylab("seed-source\ndistance (m)")+xlab("elevation (m)")+theme(legend.position = "bottom", legend.key.width = unit(0.4, 'in'), legend.key.height = unit(0.1, 'in'))
+p2 <- study.area.CP  %>% mutate(aspen= ifelse(aspen==0, "absent", "present")) %>% ggplot(aes(x=aspen,y=elevation))+geom_boxplot()+ylab("elevation (m)")+xlab("pre-fire aspen\noccurence")
+
+p3 <- study.area.CP  %>% mutate(severity= factor(severity, levels=1:4,labels=c("unburned\nto low", "low", "moderate", "high"))) %>% ggplot(aes(x=severity,y=elevation))+geom_boxplot()+ylab("elevation (m)")+xlab("fire severity")
+
+p12 <- p2 + p3 + p1 + plot_layout(nrow=1, guides="collect")&theme(legend.position = "bottom")&plot_annotation(tag_levels="A")
+ggsave(p12, filename=here("Results", "Figures", "FigElevationxDist.jpg"), width=7, height=2.5, units="in", dpi=300)
+knitr::include_graphics(here("Results", "Figures", "FigElevationxDist.jpg"))
 ```

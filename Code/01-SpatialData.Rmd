@@ -38,6 +38,7 @@ pacman::p_load(
   officer, # word documents
   bookdown, # word documents
   tidyverse, # data manipulation
+  magrittr, # pipe functions 
   ggplot2, # figures
   RColorBrewer, # color palettes
   patchwork, # combining figures
@@ -47,11 +48,13 @@ pacman::p_load(
   stars, # raster data
   tmap, # easy plotting of maps
   terrainr, # dem
+  DescTools, # degrees to radian
   prism, # prism data
   tmaptools, # helper library for tmap
   grid, # useful for plotting inset map
   prism, # prism data
-  readxl # read excel files
+  readxl, # read excel files
+  googledrive
 ) 
 
 proj.proj <- 4629
@@ -100,28 +103,71 @@ The following code will download nearly all publicly-available spatial data used
 
 We obtained spatial data describing state boundaries from the US Census Bureau (<https://www.census.gov/geographies/mapping-files.html>).
 
-```{r DL_States, echo=T}
+```{r States, echo=T}
 # states
 dir.create(here("Data", "Spatial", "States"), showWarnings = FALSE)
 temp <- here("Data", "Spatial", "States", "cb_2018_us_state_20m.zip")
 if(!file.exists(temp)){
   download.file("https://www2.census.gov/geo/tiger/GENZ2018/shp/cb_2018_us_state_20m.zip", temp, mode="wb")
   unzip(temp, exdir=here("Data", "Spatial", "States"))
+  
+  st_read(here("Data", "Spatial", "States", "cb_2018_us_state_20m.shp")) %>% 
+    filter(STUSPS %in% c("WA", "OR", "CA", "ID", "NV", "AZ", "MT", "UT", "NM", "CO", "WY")) %>% 
+    st_write(here("Data", "Spatial", "States", "cb_2018_us_state_20m-WUS.shp"))
 }
+
+```
+
+```{r Ecoregion}
+# ecoregion
+dir.create(here("Data", "Spatial", "Ecoregions"), showWarnings = FALSE)
+temp <- here("Data", "Spatial", "Ecoregions","us_eco_l3.zip")
+if(!file.exists(temp)){
+  download.file("https://dmap-prod-oms-edc.s3.us-east-1.amazonaws.com/ORD/Ecoregions/us/us_eco_l3.zip", temp, mode="wb")
+  unzip(temp, exdir=here("Data", "Spatial", "Ecoregions"))
+}
+```
+
+```{r ForestType}
+# forest type
+dir.create(here("Data", "Spatial", "TreeMap"), showWarnings = FALSE)
+temp <- here("Data", "Spatial", "TreeMap", "TreeMap2016_FORTYPCD.zip")
+if(!file.exists(temp)){
+  download.file("https://data.fs.usda.gov/geodata/rastergateway/treemap/docs/TreeMap2016_FORTYPCD.zip", temp)
+  unzip(temp, exdir=here("Data", "Spatial", "TreeMap"))
+}
+```
+
+```{r Landfire}
+
+# forest type ca. 2001
+dir.create(here("Data", "Spatial", "Landfire"), showWarnings = FALSE)
+temp <- here("Data", "Spatial", "Landfire", "US_105_FRG.zip")
+if(!file.exists(temp)){
+  download.file("https://landfire.gov/data-downloads/US_105/US_105_FRG.zip", temp)
+  unzip(temp, exdir=here("Data", "Spatial", "Landfire"))
+}
+
+temp <- here("Data", "Spatial", "Landfire", "US_105_EVT.zip")
+if(!file.exists(temp)){
+  download.file("https://landfire.gov/data-downloads/US_105/US_105_EVT.zip", temp)
+  unzip(temp, exdir=here("Data", "Spatial", "Landfire"))
+}
+
 ```
 
 ## Disturbance data
 
 We acquired polygon data describing the extent and severity of the Cameron Peak fire from the Monitoring Trends in Burn Severity Project [@mtbsproject2024MTBSDataAccess; @mtbsproject2024MTBSDataAccessa] ([mtbs.gov](mtbs.gov)).
 
-```{r DL_MTBS, echo=T}
-# MTBS 
+```{r MTBS, echo=T}
 dir.create(here("Data", "Spatial", "MTBS"), showWarnings = FALSE)
 temp <- here("Data", "Spatial", "MTBS", "mtbs_perimeter_data.zip")
 if(!file.exists(temp)){
-  download.file("https://edcintl.cr.usgs.gov/downloads/sciweb1/shared/MTBS_Fire/data/composite_data/burned_area_extent_shapefile/mtbs_perimeter_data.zip", temp, mode="wb")
+  download.file("https://edcintl.cr.usgs.gov/downloads/sciweb1/shared/MTBS_Fire/data/composite_data/burned_area_extent_shapefile/mtbs_perimeter_data.zip", temp)
   unzip(temp, exdir=here("Data", "Spatial", "MTBS"))
 }
+
 
 # MTBS burn severity
 dir.create(here("Data", "Spatial", "MTBS"), showWarnings = FALSE)
@@ -133,23 +179,12 @@ if(!file.exists(temp)){
   overwrite = TRUE
   )
   unzip(temp, exdir=here("Data", "Spatial", "MTBS"))
-  
 }
 ```
 
 We also obtained spatially data describing land ownership from the Colorado Natural Heritage Program [-@coloradonaturalheritageprogram2019ColoradoOwnershipManagement].
 
-```{r DL_USFS}
-dir.create(here("Data", "Spatial", "SUFS"), showWarnings = FALSE)
-temp <- here(paste0("Data", "Spatial", "USFS", "RangerDistricts.zip"))
-if(!file.exists(temp)){
-  download.file("https://data.fs.usda.gov/geodata/edw/edw_resources/shp/S_USA.RangerDistrict.zip", temp)
-  unzip(temp, exdir=here("Data", "Spatial", "USFS"))
-}
-
-```
-
-```{r DL_LandOwnership}
+```{r LandOwnership}
 dir.create(here("Data", "Spatial", "CoMaP"), showWarnings = FALSE)
 temp <- here(paste0("Data", "Spatial", "CoMaP", "COMaP_v20190306.gdb.zip"))
 if(!file.exists(temp)){
@@ -160,12 +195,11 @@ if(!file.exists(temp)){
   )
   unzip(temp, exdir=here("Data", "Spatial", "CoMaP"))
 }
-
 ```
 
 We obtained a 10-m resolution map of aspen cover in ca. 2019 from Cook et al. [-@cook2024MappingQuakingAspen].
 
-```{r DL_aspen}
+```{r Aspen}
 # Download spatial data describing the extent of aspen
 if(!dir.exists(here("Data", "Spatial", "Aspen"))){
   dir.create(here("Data", "Spatial", "Aspen"), showWarnings = FALSE)
@@ -183,7 +217,8 @@ if(!dir.exists(here("Data", "Spatial", "Aspen"))){
 
 We obtained a 250 m resolution Digital Elevation Model (DEM) for the study area from the National Elevation Dataset (NED) using the *terrainr* package [@terrainr].
 
-```{r DEM, echo=T}
+```{r DEM}
+dir.create(here("Data", "Spatial", "DEM"), showWarnings = FALSE)
 if(!file.exists(here("Data", "Spatial", "DEM", "DEM30.tif"))){
  # Read in perimeter data
 CameronPeak <- st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp")) %>% 
@@ -195,19 +230,31 @@ CameronPeak <- st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp")) %>
   dem.rast <- rast(dem$elevation)
   writeRaster(dem.rast, here("Data", "Spatial", "DEM", "DEM30.tif"), overwrite=T)
 }
+
+if(!file.exists(here("Data", "Spatial", "DEM", "DEM250.tif"))){
+  # Read in ecoregion data
+  SRM <- st_read(here("Data", "Spatial", "Ecoregions", "US_Eco_L3.shp")) %>% filter(US_L3NAME=="Southern Rockies")
+  
+  # 250 m
+  dem <- get_tiles(data=SRM, output_prefix = here("Data", "Spatial", "DEM", "DEM250"), services="elevation",   resolution=250)
+  dem.rast <- lapply(dem$elevation,FUN=rast)
+  writeRaster(dem.rast[[1]], here("Data", "Spatial", "DEM", "DEM250.tif"), overwrite=T)
+  }
 ```
 
 ## PRISM
 
-To characterize the study area's climate, we obtained monthly precipitation totals, minimum temperatures, and maximum temperature 30-year normals (1980-2010) from PRISM [@prismclimategroup2021Monthly30yearClimate] using the *prism* package [@prism]
+To characterize the study area's climate, we obtained 30-year normals (1991-2020) of monthly precipitation totals, minimum temperatures, and maximum temperature from PRISM [@prismclimategroup2021Monthly30yearClimate]. To characterize post-fire weather conditions, which are an important driver of aspen seedling establishment, we also obtained annual precipitation totals for 2021 and 2022 from PRISM [@prismclimategroup2021MonthlyTimeSeries]. Both datasets were retrieved using the *prism* package [@prism].
 
-```{r DL_PRISM, echo=T}
+```{r PRISM}
 if(!dir.exists(here("Data", "Spatial", "PRISM"))){
   dir.create(here("Data", "Spatial", "PRISM"), showWarnings = FALSE)
   prism_set_dl_dir(here("Data", "Spatial", "PRISM"))
   
   # Climate normals
   get_prism_normals("ppt", "800m", annual = TRUE, keepZip = FALSE)
+  get_prism_normals("tmean", "800m", annual = TRUE, keepZip = FALSE)
+
   get_prism_normals("ppt", "4km", mon=3:5, keepZip = FALSE)
   get_prism_normals("tmin", "800m", mon=1, keepZip = FALSE)
   get_prism_normals("tmax", "800m", mon=7, keepZip = FALSE)
@@ -219,97 +266,162 @@ if(!dir.exists(here("Data", "Spatial", "PRISM"))){
 }
 ```
 
-# Generate study area map
+# Pre-processing
 
-```{r LiveAspen}
+```{r FirebyForestType}
+# Read
+fortypcd <- rast(here("Data", "Spatial", "TreeMap", "TreeMap2016_FORTYPCD.tif"))
+fortypcd.attribute <- levels(fortypcd)[[1]]
+
+eco <- st_read(here("Data", "Spatial", "Ecoregions", "US_Eco_L3.shp")) %>% filter(US_L3NAME=="Southern Rockies") %>% st_transform(st_crs(fortypcd))
+eco %>% st_write(here("Data", "Spatial", "Ecoregions", "US_Eco_L3-SR.shp"), append=F)
+
+fortypcd.srm <- fortypcd %>% crop(st_bbox(eco)) %>% mask(eco)
+fortypcd.srm %>% writeRaster(here("Data", "Spatial", "TreeMap", "TreeMap2016_FORTYPCD-SRM.tif"), overwrite=T)
+
+
+fires <- st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp")) %>% st_transform(st_crs(fortypcd))
+fires.srm <- fires %>% st_intersection(eco)
+fires.srm %>% st_write(here("Data", "Spatial", "MTBS", "mtbs_perims_DD-SR.shp"), append=F)
+
+fires.srm.recent <- fires.srm %>% mutate(year=lubridate::year(as.Date(Ig_Date))) %>% filter(year >=2017) # filter for recent fires
+fortypcd.burned <- mask(fortypcd.srm, fires.srm.recent) # mask out unburned areas
+fortypcd.burned.freq <- freq(fortypcd.burned) %>% mutate(percent=round(count/sum(count)*100,1)) %>% arrange(desc(percent)) %>% filter(value %in% c("Lodgepole pine", "Engelmann spruce / subalpine fir", "Engelmann spruce", "Subalpine fir")) 
+fortypcd.burned.freq.subalpine <- fortypcd.burned.freq %>% pull(percent) %>% sum()
+
+fires.srm.recent.mega <- fires.srm.recent %>% filter(BurnBndAc >= 10000*2.47) # filter for mega-fires
+fortypcd.burned.mega <- mask(fortypcd.srm, fires.srm.recent.mega) # mask out unburned areas
+fortypcd.burned.mega.freq <- freq(fortypcd.burned.mega) %>% mutate(percent=round(count/sum(count)*100,1)) %>% arrange(desc(percent)) %>% filter(value %in% c("Lodgepole pine", "Engelmann spruce / subalpine fir", "Engelmann spruce", "Subalpine fir")) 
+fortypcd.burned.mega.freq.subalpine <- fortypcd.burned.mega.freq  %>% pull(percent) %>% sum()
+
+```
+
+```{r FirebyBB}
+# Read in bark beetle data
+bb.presence <- rast(here("Data", "Spatial", "Rodman et al. RS_DataArchive", "Data", "SpatialData", "BBPresence_finalMasked.tif"))
+bb.severity<- rast(here("Data", "Spatial", "Rodman et al. RS_DataArchive", "Data", "SpatialData", "BBSeverity_finalMasked.tif"))
+bb.burned <- mask(bb.presence, fires.srm.recent) # mask out unburned areas
+bb.burned %>% freq() %>% mutate(percent=round(count/sum(count)*100,1))
+```
+
+```{r Distance2Aspen}
 dir.create(here("Data", "Spatial", "Processed"))
+if(!file.exists(here("Data", "Spatial","Processed", "aspen-live-highmod-dist.tif"))){
+  
+  # Read in aspen presence/absence data
+  aspen <- rast(here("Data", "Spatial", "Aspen", "srme_skcv_distribution_binopt.tif"))
 
-# Read in aspen presence/absence data
-aspen <- rast(here("Data", "Spatial", "Aspen", "srme_skcv_distribution_binopt.tif"))
+  # Read in fire severity data
+  severity <-  rast(here('Data', 'Spatial', 'MTBS', 'mtbs_CO_2020.tif'))
 
-# Read in fire severity data
-severity <-  rast(here('Data', 'Spatial', 'MTBS', 'mtbs_CO_2020.tif'))
-
-# Read in perimeter data
-CameronPeak <- st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp")) %>% 
+  # Read in perimeter data
+  CameronPeak <- st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp")) %>% 
   filter(Incid_Name == "CAMERON PEAK") %>% # pull out just Cameron Peak
   st_transform(st_crs(severity)) # transform 
 
-# Buffer fire by 5 km
-CameronPeak.buffer5000 <- CameronPeak %>% 
-  st_buffer(dist=5000)
+  CameronPeak %>% st_write(here("Data", "Spatial", "MTBS", "mtbs_perims_DD-CameronPeak.shp"), append=F)
 
-# Clip severity raster 
-CameronPeak.severity <- crop(severity, st_bbox(CameronPeak.buffer5000))
+  # Buffer fire by 5 km
+  CameronPeak.buffer5000 <- CameronPeak %>% 
+    st_buffer(dist=5000)
+  
+  # Clip severity raster 
+  CameronPeak.severity <- crop(severity, st_bbox(CameronPeak.buffer5000))
+  
+  # Convert to polygon
+  CameronPeak.highseverity.p <- CameronPeak.severity %>% 
+    st_as_stars() %>% 
+    st_as_sf(as_points = FALSE, merge =TRUE) %>%
+    filter(mtbs_CO_2020 %in% 4) %>% # select only high severity pixels
+    st_union() # union
+  st_write(CameronPeak.highseverity.p, dsn=here("Data", "Spatial", "Processed", "CameronPeak-highseverity.shp"), append=F) # write   to file
+  
+  CameronPeak.highmodseverity.p <- CameronPeak.severity %>% 
+    st_as_stars() %>% 
+    st_as_sf(as_points = FALSE, merge =TRUE) %>%
+    filter(mtbs_CO_2020 %in% 3:4) %>% # select only moderate and high severity pixels
+    st_union() # union
+  st_write(CameronPeak.highmodseverity.p, dsn=here("Data", "Spatial", "Processed", "CameronPeak-highmod.shp"), append=F) # write to file
+  
+  # Convert aspen data from raster to polygon
+  aspen <- aspen %>% crop(st_bbox(st_transform(CameronPeak.buffer5000, st_crs(aspen)))) # crop aspen data to area in and surrounding   Cameron Peak
+  
+  aspen.p <- aspen %>% 
+    st_as_stars() %>% 
+    st_as_sf(as_points = FALSE, merge =TRUE) %>%
+    filter(Band_1==1) %>% 
+    st_union(append=F) # union
+  st_write(aspen.p, dsn=here("Data", "Spatial", "Processed", "Aspen-CameronPeak.shp"),append=F)
+  aspen.r <- rasterize(st_as_sf(aspen.p), aspen, filename=here("Data", "Spatial", "Processed", "Aspen-total.tif"), overwrite=T)
+  
+  # Get area of live aspen --> exclude aspen that burned at high severity
+  CameronPeak.highseverity.p <- CameronPeak.highseverity.p %>% st_transform(st_crs(aspen.p))
+  aspen.live.high <- st_difference(aspen.p, CameronPeak.highseverity.p)
+  st_write(aspen.live.high, here("Data", "Spatial", "Processed", "aspen-live-high.shp"), append=F) # write to file
+  aspen.live.high.r <- rasterize(st_as_sf(aspen.live.high), aspen, filename=here("Data", "Spatial", "Aspen", "Aspen-live-high.tif"), overwrite=T)
+  
+  # Get area of live aspen --> exclude aspen that burned at modeate or high severity
+  CameronPeak.highmodseverity.p <- CameronPeak.highmodseverity.p  %>% st_transform(st_crs(aspen.p))
+  aspen.live.highmod <- st_difference(aspen.p, CameronPeak.highmodseverity.p)
+  st_write(aspen.live.highmod, here("Data", "Spatial", "Processed", "aspen-live-highmod.shp"), append=F) # write to file
+  aspen.live.highmod.r <- rasterize(st_as_sf(aspen.live.highmod), aspen, filename=here("Data", "Spatial", "Aspen", "Aspen-live  -highmod.tif"), overwrite=T)
+  
+  # Get area of dead aspen --> only aspen that burned at modeate or high severity
+  CameronPeak.highmodseverity.p <- CameronPeak.highmodseverity.p  %>% st_transform(st_crs(aspen.p))
+  aspen.dead.highmod <- st_intersection(aspen.p, CameronPeak.highmodseverity.p)
+  st_write(aspen.dead.highmod, here("Data", "Spatial", "Processed", "aspen-dead-highmod.shp"), append=F) # write to file
+  aspen.dead.highmod.r <- rasterize(st_as_sf(aspen.dead.highmod), aspen, filename=here("Data", "Spatial", "Aspen", "Aspen-dead  -highmod.tif"), overwrite=T)
+  
+  # Calculate distance to aspen
+  aspen.distance <- distance(aspen.r, filename=here("Data", "Spatial", "Processed", "aspen-dist.tif"), overwrite=T)
+  aspen.live.high.distance <- distance(aspen.live.high.r, filename=here("Data", "Spatial","Processed", "aspen-live-high-dist.tif"),   overwrite=T)
+  aspen.live.highmod.distance <- distance(aspen.live.highmod.r, filename=here("Data", "Spatial","Processed", "aspen-live-highmod-dist.tif"), overwrite=T)
 
-# Convert to polygon
-CameronPeak.highseverity.p <- CameronPeak.severity %>% 
-  st_as_stars() %>% 
-  st_as_sf(as_points = FALSE, merge =TRUE) %>%
-  filter(mtbs_CO_2020 %in% 4) %>% # select only high severity pixels
-  st_union() # union
-st_write(CameronPeak.highseverity.p, dsn=here("Data", "Spatial", "Processed", "CameronPeak-highseverity.shp"), append=F) # write to file
+}
+  
+```
 
-CameronPeak.highmodseverity.p <- CameronPeak.severity %>% 
-  st_as_stars() %>% 
-  st_as_sf(as_points = FALSE, merge =TRUE) %>%
-  filter(mtbs_CO_2020 %in% 3:4) %>% # select only moderate and high severity pixels
-  st_union() # union
-st_write(CameronPeak.highmodseverity.p, dsn=here("Data", "Spatial", "Processed", "CameronPeak-highmod.shp"), append=F) # write to file
+```{r dist2lowseverity}
+if(!file.exists(here("Data", "Spatial", "Processed", "CameronPeak.severitylow-dist.tif"))){
+  # Read in fire severity data
+  severity <-  rast(here('Data', 'Spatial', 'MTBS', 'mtbs_CO_2020.tif'))
+
+  # Read in perimeter data
+  CameronPeak <- st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp")) %>% 
+    filter(Incid_Name == "CAMERON PEAK") %>% # pull out just Cameron Peak
+    st_transform(st_crs(severity)) # transform 
+  
+  CameronPeak %>% st_write(here("Data", "Spatial", "MTBS", "mtbs_perims_DD-CameronPeak.shp"), append=F)
+  
+  # Buffer fire by 5 km
+  CameronPeak.buffer5000 <- CameronPeak %>% 
+    st_buffer(dist=5000)
+  
+  # Clip severity raster 
+  CameronPeak.severity <- crop(severity, st_bbox(CameronPeak.buffer5000))
+  
+  ## Calculate distance to area burned at low severity or unburned
+
+  CameronPeak.severitylow <- CameronPeak.severity
+  CameronPeak.severitylow[is.na(CameronPeak.severitylow)] <-1
+  CameronPeak.severitylow[CameronPeak.severitylow>2]<-NA
+  CameronPeak.severitylow[CameronPeak.severitylow==2]<-1
+  CameronPeak.severitylow.distance <- distance(CameronPeak.severitylow, filename=here("Data", "Spatial", "Processed", "CameronPeak.severitylow-dist.tif"), overwrite=T)
+}
 
 
-# Convert aspen data from raster to polygon
-aspen <- aspen %>% crop(st_bbox(st_transform(CameronPeak.buffer5000, st_crs(aspen)))) # crop aspen data to area in and surrounding Cameron Peak
-aspen.p <- aspen %>% 
-  st_as_stars() %>% 
-  st_as_sf(as_points = FALSE, merge =TRUE) %>%
-  filter(Band_1==1) %>% 
-  st_union(append=F) # union
-st_write(aspen.p, dsn=here("Data", "Spatial", "Processed", "Aspen-CameronPeak.shp"),append=F)
-aspen.r <- rasterize(st_as_sf(aspen.p), aspen, filename=here("Data", "Spatial", "Processed", "Aspen-total.tif"), overwrite=T)
-
-# Get area of live aspen --> exclude aspen that burned at high severity
-CameronPeak.highseverity.p <- CameronPeak.highseverity.p %>% st_transform(st_crs(aspen.p))
-aspen.live.high <- st_difference(aspen.p, CameronPeak.highseverity.p)
-st_write(aspen.live.high, here("Data", "Spatial", "Processed", "aspen-live-high.shp"), append=F) # write to file
-aspen.live.high.r <- rasterize(st_as_sf(aspen.live.high), aspen, filename=here("Data", "Spatial", "Aspen", "Aspen-live-high.tif"), overwrite=T)
-
-# Get area of live aspen --> exclude aspen that burned at modeate or high severity
-CameronPeak.highmodseverity.p <- CameronPeak.highmodseverity.p  %>% st_transform(st_crs(aspen.p))
-aspen.live.highmod <- st_difference(aspen.p, CameronPeak.highmodseverity.p)
-st_write(aspen.live.highmod, here("Data", "Spatial", "Processed", "aspen-live-highmod.shp"), append=F) # write to file
-aspen.live.highmod.r <- rasterize(st_as_sf(aspen.live.highmod), aspen, filename=here("Data", "Spatial", "Aspen", "Aspen-live-highmod.tif"), overwrite=T)
-
-# Calculate distance
-aspen.distance <- distance(aspen.r, filename=here("Data", "Spatial", "Processed", "aspen-dist.tif"), overwrite=T)
-aspen.live.high.distance <- distance(aspen.live.high.r, filename=here("Data", "Spatial","Processed", "aspen-live-high-dist.tif"), overwrite=T)
-aspen.live.highmod.distance <- distance(aspen.live.highmod.r, filename=here("Data", "Spatial","Processed", "aspen-live-highmod-dist.tif"), overwrite=T)
 ```
 
 # Characterize study area
 
-```{r CharacterizeClimate}
-# Read in fire severity data
-severity <-  rast(here('Data', 'Spatial', 'MTBS', 'mtbs_CO_2020.tif')) 
-CameronPeak <-  st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp"))  %>% 
-  filter(Incid_Name == "CAMERON PEAK") %>% # pull out just Cameron Peak
-  st_transform(st_crs(severity)) # transform 
-CameronPeak.severity <- crop(severity, st_bbox(CameronPeak ))
-CameronPeak.severity[CameronPeak.severity >=5] <-NA
-  
-# Read in aspen data
-aspen <- rast(here("Data", "Spatial", "Aspen", "srme_skcv_distribution_binopt.tif"))
-aspen.live.distance <- rast(here("Data", "Spatial","Processed", "aspen-live-highmod-dist.tif"))
-aspen.prefire.distance <- rast(here("Data", "Spatial", "Processed", "aspen-dist.tif"))
-
-# Read in elevation data
-dem <- rast(here("Data", "Spatial", "DEM", "DEM30.tif"))
-
+```{r}
 # Read in climate data
 prism_set_dl_dir(here("Data", "Spatial", "PRISM"))
 
 #normals
 ppt.normal <- prism_archive_subset("ppt", "annual normals", resolution="800m") %>% pd_to_file() %>% rast()
+tmean.normal <- prism_archive_subset("tmean", "annual normals", resolution="800m") %>% pd_to_file() %>% rast()
+
 tmin1.normal <- prism_archive_subset("tmin", "monthly normals", mon=1, resolution="800m") %>% pd_to_file() %>% rast()
 tmax7.normal <- prism_archive_subset("tmax", "monthly normals", mon=7, resolution="800m") %>% pd_to_file() %>% rast()
 
@@ -324,52 +436,111 @@ ppt.2021 <- prism_archive_subset("ppt", "annual", year=2021) %>% pd_to_file() %>
 # precip 2022
 ppt.2022 <- prism_archive_subset("ppt", "annual",year=2022) %>% pd_to_file() %>% rast()
 
+# Read in fire severity data
+severity <-  rast(here('Data', 'Spatial', 'MTBS', 'mtbs_CO_2020.tif')) 
+CameronPeak <-  st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp"))  %>% 
+  filter(Incid_Name == "CAMERON PEAK") %>% # pull out just Cameron Peak
+  st_transform(st_crs(severity)) # transform 
+CameronPeak.severity <- crop(severity, st_bbox(CameronPeak ))
+CameronPeak.severity[CameronPeak.severity >=5] <-NA
+  
+# Read in aspen data
+aspen <- rast(here("Data", "Spatial", "Aspen", "srme_skcv_distribution_binopt.tif"))
+aspen.live <- rast(here("Data", "Spatial", "Aspen", "Aspen-live-highmod.tif"))
+aspen.live.distance <- rast(here("Data", "Spatial","Processed", "aspen-live-highmod-dist.tif"))
+aspen.prefire.distance <- rast(here("Data", "Spatial", "Processed", "aspen-dist.tif"))
+
+# Read in distance to severely burned 
+CameronPeak.severitylow.distance <- rast(here("Data", "Spatial", "Processed", "CameronPeak.severitylow-dist.tif"))
+
+# Read in elevation data
+dem <- rast(here("Data", "Spatial", "DEM", "DEM30.tif"))
+
+# Read in bark beetle data
+bb.presence <- rast(here("Data", "Spatial", "Dryad", "Rodman", "Rodman et al. RS_DataArchive", "Data", "SpatialData", "BBPresence_finalMasked.tif"))
+bb.severity<- rast(here("Data", "Spatial", "Dryad", "Rodman", "Rodman et al. RS_DataArchive", "Data", "SpatialData", "BBSeverity_finalMasked.tif"))
+
+# Read in fire regime groups
+frg <- rast(here("Data", "Spatial", "Landfire", "US_105_FRG", "Tif", "us_105frg.tif"))
+
 # Sample and characterize patterns
-## Cameron Peak
+## Cameron Peak 
 CameronPeak.sample.pts <- spatSample(CameronPeak.severity, 10000, method="random", replace=FALSE, na.rm=T, as.points=TRUE, values=TRUE, cells=FALSE) 
 CameronPeak.sample.pts <- extract(aspen, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(aspen.prefire.distance, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(aspen.live.distance, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(CameronPeak.severitylow.distance, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(dem, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(ppt.normal, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(tmean.normal, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(tmin1.normal, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(tmax7.normal, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(ppt.2021, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(ppt.2022, CameronPeak.sample.pts, bind=T)
-
+CameronPeak.sample.pts <- extract(bb.presence, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(bb.severity, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(frg, CameronPeak.sample.pts, bind=T)
+  
 CameronPeak.sample.df <- CameronPeak.sample.pts %>% as.data.frame()
-colnames(CameronPeak.sample.df) <- c("severity", "aspen", "distance.pre", "distance.post", "elevation", "ppt", "tmin", "tmax", "ppt.2021", "ppt.2022")
+colnames(CameronPeak.sample.df) <- c("severity", "aspen", "distance.pre", "distance.post", "distance.high", "elevation", "ppt", "tmean", "tmin", "tmax", "ppt.2021", "ppt.2022", "bb.presence", "bb.severity")
 write.csv(CameronPeak.sample.df, here("Results", "CameronPeak-attributes.csv"))
 
 ## Study sites
-sites <- read_excel(here("Data", "Postfire-Regen-Clean.xlsx"), sheet="Site") %>% dplyr::select("Site", "Easting", "Northing")
+sites <- read_excel(here("Data", "Postfire-Regen-Clean.xlsx"), sheet="Site") %>% dplyr::select("Site", "Easting", "Northing", "Aspect", "Slope")
 sites.sf <- sites %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") 
+sites.sf %>% st_write(here("Data", "Spatial", "Postfire-Regen-Clean.shp"), append=F)
+
 sites.sf <- extract(severity, sites.sf, bind=T)
 sites.sf <- extract(aspen, sites.sf, bind=T)
 sites.sf <- extract(aspen.prefire.distance, sites.sf, bind=T)
 sites.sf <- extract(aspen.live.distance, sites.sf, bind=T)
+sites.sf <- extract(CameronPeak.severitylow.distance, sites.sf, bind=T)
 sites.sf <- extract(dem, sites.sf, bind=T)
 sites.sf <- extract(ppt.normal, sites.sf, bind=T)
+sites.sf <- extract(tmean.normal, sites.sf, bind=T)
 sites.sf <- extract(tmin1.normal, sites.sf, bind=T)
 sites.sf <- extract(tmax7.normal, sites.sf, bind=T)
 sites.sf<- extract(ppt.2021, sites.sf, bind=T)
 sites.sf <- extract(ppt.2022, sites.sf, bind=T)
+sites.sf <- extract(frg, sites.sf, bind=T)
+
 sites.df<- sites.sf %>% as.data.frame()
-colnames(sites.df) <- c("Site", "severity", "aspen", "distance.pre", "distance.post", "elevation", "ppt", "tmin", "tmax", "ppt.2021", "ppt.2022")
-write.csv(sites.df, here("Results", "sites-attributes.csv"))
+colnames(sites.df) <- c("Site", "Aspect", "Slope", "severity", "aspen", "distance.pre", "distance.post", "distance.high", "elevation", "ppt", "tmean", "tmin", "tmax", "ppt.2021", "ppt.2022")
 
 
+aspen.live[is.na(aspen.live)] <-0
+sites.zonal <- read_excel(here("Data", "Postfire-Regen-Clean.xlsx"), sheet="Site") %>% dplyr::select("Site", "Easting", "Northing", "Aspect", "Slope") %>% 
+  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613")  %>% 
+  st_buffer(dist=1000) %>% 
+  vect()
+sites.zonal.df <- data.frame(Site= sites.zonal$Site, Aspen.cover=zonal(aspen.live, sites.zonal, fun="sum", na.rm=T), Aspen.dist=zonal(aspen.prefire.distance, sites.zonal, fun="mean", na.rm=T)) %>% set_colnames(c("Site", "aspen.1km.cover", "aspen.1km.dist"))
 
-p1 <- CameronPeak.sample.df %>% ggplot(aes(x=elevation, y=distance.pre))+geom_hex()+ylim(0,2100)+
-  scale_fill_viridis_c(begin = 0, end = .9, option = "C", limit = range(c(0,250)))+ylab("distance to live\naspen pre-fire (m)")
-p2 <- CameronPeak.sample.df %>%  ggplot(aes(x=elevation, y=distance.post))+geom_hex()+ylim(0,2100)+
-  scale_fill_viridis_c(begin = 0, end = .9, option = "C", limit = range(c(0,250)))+ylab("distance to live\naspen post-fire (m)")
-p3 <- CameronPeak.sample.df  %>% mutate(aspen=factor(aspen, level=c(0,1), labels=c("absent", "present"))) %>% ggplot(aes(y=elevation, x=aspen))+geom_boxplot()+xlab("aspen occurrence")+ylab("elevation (m)")
-p4 <- CameronPeak.sample.df %>% mutate(severity=factor(severity, level=c(1, 2, 3, 4), labels=c("unburned", "low", "moderate", "high"))) %>% ggplot(aes(y=elevation, x=factor(severity)))+geom_boxplot()+xlab("fire severity")+ylab("elevation (m)")
-p1234 <- p1 + p2 + p3+ p4+plot_layout(nrow=2, guides="collect") + plot_annotation(tag_levels = "A") &
-  theme(legend.position='bottom')
+sites.df <- left_join(sites.df, sites.zonal.df, by="Site")
 
-ggsave(here("Results", "Figures", "CameronPeak-patterns.jpg"), width=5, height=4, units="in", p1234)
+# Calc folded aspect
+sites.df$Longitude <- sites %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") %>% st_transform(crs="epsg:4326") %>% st_coordinates() %>% as.data.frame() %>% st_drop_geometry() %>% pull(X)
+sites.df$Latitude <- sites  %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") %>% st_transform(crs="epsg:4326") %>% st_coordinates() %>% as.data.frame() %>% st_drop_geometry()  %>% pull(Y)
+sites.df$FoldedAspect <- abs( 180 - abs(sites.df$Aspect-225))
+sites.df$PotentialDirRad <- -1.467+1.582*cos(DegToRad(sites.df$Latitude))*cos(DegToRad(sites.df$Slope))-1.5*cos(sites.df$FoldedAspect)* sin(DegToRad(sites.df$Slope))*sin(DegToRad(sites.df$Latitude))-0.262*sin(DegToRad(sites.df$Latitude))*sin(DegToRad(sites.df$Slope))+0.607* sin(sites.df$FoldedAspect)*sin(DegToRad(sites.df$Slope))
+sites.df$HeatLoad <- exp(sites.df$PotentialDirRad )
+
+sites.df <- sites.df[, c("Site", "Latitude", "Longitude", "Aspect", "Slope", "HeatLoad", "aspen", "distance.pre", "distance.post", "distance.high", "elevation", "ppt", "tmean", "tmin", "tmax")]
+write.csv(sites.df, here("Results", "sites-attributes.csv"), row.names=F)
 ```
 
+
+```{r}
+# Read in elevation data
+eco <- st_read(here("Data", "Spatial", "Ecoregions", "US_Eco_L3.shp")) %>% filter(US_L3NAME=="Southern Rockies") 
+dem <- rast(here("Data", "Spatial", "DEM", "DEM250.tif"))
+names(dem) <- "Elevation"
+post.fire <- read.csv(here("Data", "Spatial", "Dryad", "Davis", "doi_10_5061_dryad_0rxwdbs47__v20230306", "Dryad submission", "Field data", "Davis_et_al_regen_plot_data.csv")) %>% filter(is.na(latitude)==F) %>% st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>% st_transform(st_crs(eco))
+post.fire <- post.fire %>% st_intersection(eco) %>% st_transform(st_crs(dem))
+
+post.fire <- extract(dem, post.fire, bind=T)
+
+
+frg <- rast(here("Data", "Spatial", "Landfire", "US_105_FRG", "Tif", "us_105frg.tif"))
+post.fire <- extract(frg, post.fire, bind=T)
+```
 # References
