@@ -46,7 +46,9 @@ Maps/
 # Bib tex files
 *.bib
 .RDataTmp
-<<<<<<< HEAD
-Fieldwork
-=======
->>>>>>> 3fdf70ef23bea2f40b22338453a8a1a1f6fc668b
+
+# Backups
+BAK/
+
+# Documents
+Documents/
