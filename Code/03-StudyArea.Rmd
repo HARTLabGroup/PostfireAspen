@@ -1,0 +1,231 @@
+---
+title: "Study area characteristics for: Limited conifer regeneration, but widespread regeneration of aspen seedlings following the Cameron Peak Fire, northwestern Colorado"
+author: "Sarah V. Carter and Sarah J. Hart"
+email: "sarah.hart@colostate.edu"
+output: 
+   officedown::rdocx_document:
+     reference_docx: Template.docx
+bibliography: references.bib
+csl: "`r here::here('citationstyle.csl')`"
+link-citations: true
+urlcolor: blue
+linkcolor: blue
+citationcolor: blue
+---
+
+```{r setup,include=FALSE, results='hide'}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	progress = FALSE,
+	cache = FALSE,
+	dpi = 300,
+  fig.align = 'center'
+)
+
+set.seed(513)
+options(repos = c(CRAN = "http://cran.rstudio.com"))
+options(timeout=60*60) # timeout downloads that last longer than an hour
+
+### Import libraries
+if (!require("remotes"))  install.packages("remotes")
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+  here, # easy file structure
+  rmarkdown, # 
+  flextable, # tables
+  officer, # word documents
+  bookdown, # word documents
+  tidyverse, # data manipulation
+  magrittr, # pipe functions 
+  ggplot2, # figures
+  RColorBrewer, # color palettes
+  patchwork, # combining figures
+  sf, # spatial data
+  terra, # raster data
+  tidyterra, # raster data
+  stars, # raster data
+  tmap, # easy plotting of maps
+  terrainr, # dem
+  DescTools, # degrees to radian
+  prism, # prism data
+  tmaptools, # helper library for tmap
+  grid, # useful for plotting inset map
+  prism, # prism data
+  readxl, # read excel files
+  googledrive
+) 
+
+proj.proj <- 4629
+
+# Set custom plotting theme
+theme_new <- function(base_size = 9,base_family = "Helvetica"){
+  theme_classic(base_size = base_size, base_family = base_family) %+replace%
+    theme(
+      axis.line.x = element_line(color="black", linewidth = 0.25),
+      axis.line.y = element_line(color="black", linewidth = 0.25),
+      axis.title = element_text(size = 9),
+      axis.text = element_text(colour="black", size=8),
+      legend.key=element_rect(colour=NA, fill =NA),
+      panel.grid = element_blank(),   
+      plot.background = element_rect(fill = NA, colour = NA),
+      panel.border = element_rect(fill = NA, colour = NA),
+      panel.background = element_rect(fill = "white", colour = "black"), 
+      strip.background = element_rect(fill = "white"),
+      strip.text = element_text(size = 9)
+      
+    )
+}
+theme_set(theme_new())
+
+set_flextable_defaults(
+  font.family="Times", 
+  font.size=12,
+  line_spacing=1,
+  padding.bottom=1,
+  padding.top=1,
+  text.align='center')
+
+# Set directory structure for project
+dir.create(here("Data", "Spatial"), showWarnings = FALSE)
+dir.create(here("Results"), showWarnings = FALSE)
+dir.create(here("Results", "Figures"), showWarnings = FALSE)
+```
+
+# Characterize study area
+
+To characterize the Cameron Peak Fire study area and understand how well our study sites represent the broader landscape, we sampled 10,000 random points across the area burned by the Cameron Peak Fire. We then extracted the climate, topographic, vegetation disturbance attributes at each sample point and our study sites.
+
+```{r}
+# Read in elevation data
+dem <- rast(here("Data", "Spatial", "DEM", "DEM30.tif"))
+
+# Read in climate data
+prism_set_dl_dir(here("Data", "Spatial", "PRISM"))
+
+#normals
+ppt.normal <- prism_archive_subset("ppt", "annual normals", resolution="800m") %>% pd_to_file() %>% rast()
+ppt.normal.678910 <- prism_archive_subset("ppt", "monthly normals",  resolution="4km", mon=6:10) %>% pd_to_file() %>% rast() %>% sum()
+ppt.normal.111212345 <- prism_archive_subset("ppt", "monthly normals",  resolution="4km", mon=c(1,2,3,4,5,11,12)) %>% pd_to_file() %>% rast() %>% sum()
+tmean.normal <- prism_archive_subset("tmean", "annual normals", resolution="800m") %>% pd_to_file() %>% rast()
+tmin.normal.1 <- prism_archive_subset("tmax", "monthly normals",  resolution="4km", mon=1) %>% pd_to_file() %>% rast()
+tmax.normal.7 <- prism_archive_subset("tmax", "monthly normals",  resolution="4km", mon=7) %>% pd_to_file() %>% rast()
+tmax.normal.678910 <- prism_archive_subset("tmax", "monthly normals",  resolution="4km", mon=6:10) %>% pd_to_file() %>% rast() %>% mean()
+
+# weather 2021
+ppt.2021 <- prism_archive_subset("ppt", "annual", year=2021) %>% pd_to_file() %>% rast()
+ppt.2021.678910 <- prism_archive_subset("ppt", "monthly", year=2021, mon=6:10) %>% pd_to_file() %>% rast() %>% sum()
+ppt.2021.1112 <- prism_archive_subset("ppt", "monthly", year=2020,  mon=11:12) %>% pd_to_file() %>% rast() %>% sum()
+ppt.2021.12345 <- prism_archive_subset("ppt", "monthly", year=2021,  mon=1:5) %>% pd_to_file() %>% rast() %>% sum()
+ppt.2021.111212345 <- ppt.2021.1112 + ppt.2021.12345
+tmax.2021.678910 <- prism_archive_subset("tmax", "monthly", year=2021, mon=6:10) %>% pd_to_file() %>% rast() %>% mean()
+
+# weather 2022
+ppt.2022 <- prism_archive_subset("ppt", "annual",year=2022) %>% pd_to_file() %>% rast()
+ppt.2022.678910 <- prism_archive_subset("ppt", "monthly", year=2022, mon=6:10) %>% pd_to_file() %>% rast() %>% sum()
+ppt.2022.1112 <- prism_archive_subset("ppt", "monthly", year=2021,  mon=11:12) %>% pd_to_file() %>% rast() %>% sum()
+ppt.2022.12345 <- prism_archive_subset("ppt", "monthly", year=2022,  mon=1:5) %>% pd_to_file() %>% rast() %>% sum()
+ppt.2022.111212345 <- ppt.2022.1112 + ppt.2022.12345
+tmax.2022.678910 <- prism_archive_subset("tmax", "monthly", year=2022, mon=6:10) %>% pd_to_file() %>% rast() %>% mean()
+
+# Read in aspen data
+aspen <- rast(here("Data", "Spatial", "Aspen", "srme_skcv_distribution_binopt.tif"))
+aspen.live <- rast(here("Data", "Spatial", "Aspen", "Aspen-live-highmod.tif"))
+aspen.live.distance <- rast(here("Data", "Spatial","Processed", "aspen-live-highmod-dist.tif"))
+aspen.prefire.distance <- rast(here("Data", "Spatial", "Processed", "aspen-dist.tif"))
+
+# Read in fire severity data
+severity <-  rast(here('Data', 'Spatial', 'MTBS', 'mtbs_CO_2020.tif')) 
+CameronPeak <-  st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp"))  %>% 
+  filter(Incid_Name == "CAMERON PEAK") %>% # pull out just Cameron Peak
+  st_transform(st_crs(severity)) # transform 
+CameronPeak.severity <- crop(severity, st_bbox(CameronPeak ))
+CameronPeak.severity[CameronPeak.severity >=5] <-NA
+  
+# Read in distance to low severity fire
+CameronPeak.severitylow.distance <- rast(here("Data", "Spatial", "Processed", "CameronPeak.severitylow-dist.tif"))
+
+# Read in bark beetle data
+bb.presence <- rast(here("Data", "Spatial", "Dryad", "Rodman", "Rodman et al. RS_DataArchive", "Data", "SpatialData", "BBPresence_finalMasked.tif"))
+bb.severity <- rast(here("Data", "Spatial", "Dryad", "Rodman", "Rodman et al. RS_DataArchive", "Data", "SpatialData", "BBSeverity_finalMasked.tif"))
+
+# Sample and characterize patterns
+## Cameron Peak 
+CameronPeak.sample.pts <- spatSample(CameronPeak.severity, 10000, method="random", replace=FALSE, na.rm=T, as.points=TRUE, values=TRUE, cells=FALSE) 
+CameronPeak.sample.pts <- extract(aspen, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(CameronPeak.severitylow.distance, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(aspen.prefire.distance, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(aspen.live.distance, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(CameronPeak.severitylow.distance, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(dem, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(ppt.normal, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(ppt.normal.111212345, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(ppt.normal.678910, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(tmean.normal, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(tmin.normal.1, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(tmax.normal.7, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(tmax.normal.678910, CameronPeak.sample.pts, bind=T)
+
+CameronPeak.sample.pts <- extract(ppt.2021, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(ppt.2021.111212345, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(ppt.2021.678910, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(tmax.2021.678910, CameronPeak.sample.pts, bind=T)
+
+CameronPeak.sample.pts <- extract(ppt.2022, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(ppt.2022.111212345, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(ppt.2022.678910, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(tmax.2022.678910, CameronPeak.sample.pts, bind=T)
+
+CameronPeak.sample.pts <- extract(bb.presence, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(bb.severity, CameronPeak.sample.pts, bind=T)
+  
+CameronPeak.sample.df <- CameronPeak.sample.pts %>% as.data.frame()
+colnames(CameronPeak.sample.df) <- c("severity","seedsource.dist", "aspen", "distance.pre", "distance.post", "distance.high", "elevation", "ppt", "ppt.111212345", "ppt.678910", "tmean", "tmin1", "tmax7", "tmax.678910", "ppt.2021", "ppt.111212345.2021", "ppt.678910.2021", "tmax.678910.2021", "ppt.2022", "ppt.111212345.2022", "ppt.678910.2022", "tmax.678910.2022",  "bb.presence", "bb.severity")
+write.csv(CameronPeak.sample.df, here("Results", "CameronPeak-attributes.csv"))
+
+## Study sites
+sites <- read.csv(here("Data", "Dryad", "Site.csv")) %>% 
+  dplyr::select("Site", "Easting", "Northing", "Aspect", "Slope") 
+sites.sf <- sites %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") 
+sites.sf <- extract(CameronPeak.severity, sites.sf, bind=T)
+sites.sf <- extract(CameronPeak.severitylow.distance, sites.sf, bind=T)
+sites.sf <- extract(aspen, sites.sf, bind=T)
+sites.sf <- extract(aspen.prefire.distance, sites.sf, bind=T)
+sites.sf <- extract(aspen.live.distance, sites.sf, bind=T)
+sites.sf <- extract(CameronPeak.severitylow.distance, sites.sf, bind=T)
+sites.sf <- extract(dem, sites.sf, bind=T)
+sites.sf <- extract(ppt.normal, sites.sf, bind=T)
+sites.sf <- extract(ppt.normal.111212345, sites.sf, bind=T)
+sites.sf <- extract(ppt.normal.678910, sites.sf, bind=T)
+sites.sf <- extract(tmean.normal, sites.sf, bind=T)
+sites.sf <- extract(tmin.normal.1, sites.sf, bind=T)
+sites.sf <- extract(tmax.normal.7, sites.sf, bind=T)
+sites.sf <- extract(tmax.normal.678910, sites.sf, bind=T)
+
+sites.sf <- extract(ppt.2021, sites.sf, bind=T)
+sites.sf <- extract(ppt.2021.111212345, sites.sf, bind=T)
+sites.sf <- extract(ppt.2021.678910, sites.sf, bind=T)
+sites.sf <- extract(tmax.2021.678910, sites.sf, bind=T)
+
+sites.sf <- extract(ppt.2022, sites.sf, bind=T)
+sites.sf <- extract(ppt.2022.111212345, sites.sf, bind=T)
+sites.sf <- extract(ppt.2022.678910, sites.sf, bind=T)
+sites.sf <- extract(tmax.2022.678910, sites.sf, bind=T)
+
+sites.sf <- extract(bb.presence, sites.sf, bind=T)
+sites.sf <- extract(bb.severity, sites.sf, bind=T)
+  
+sites.df <- sites.sf %>% as.data.frame()
+colnames(sites.df) <- c("Site", "Aspect", "Slope","severity", "seedsource.dist", "aspen", "distance.pre", "distance.post", "distance.high", "elevation", "ppt", "ppt.111212345", "ppt.678910", "tmean", "tmin1", "tmax7", "tmax.678910", "ppt.2021", "ppt.111212345.2021", "ppt.678910.2021", "tmax.678910.2021", "ppt.2022", "ppt.111212345.2022", "ppt.678910.2022", "tmax.678910.2022",  "bb.presence", "bb.severity")
+
+# Calc folded aspect
+sites.df$Longitude <- sites %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") %>% st_transform(crs="epsg:4326") %>% st_coordinates() %>% as.data.frame() %>% st_drop_geometry() %>% pull(X)
+sites.df$Latitude <- sites  %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") %>% st_transform(crs="epsg:4326") %>% st_coordinates() %>% as.data.frame() %>% st_drop_geometry()  %>% pull(Y)
+sites.df$FoldedAspect <- abs( 180 - abs(sites.df$Aspect-225))
+sites.df$PotentialDirRad <- -1.467+1.582*cos(DegToRad(sites.df$Latitude))*cos(DegToRad(sites.df$Slope))-1.5*cos(sites.df$FoldedAspect)* sin(DegToRad(sites.df$Slope))*sin(DegToRad(sites.df$Latitude))-0.262*sin(DegToRad(sites.df$Latitude))*sin(DegToRad(sites.df$Slope))+0.607* sin(sites.df$FoldedAspect)*sin(DegToRad(sites.df$Slope))
+sites.df$HeatLoad <- exp(sites.df$PotentialDirRad )
+
+write.csv(sites.df, here("Results", "sites-attributes.csv"), row.names=F)
+```
+
+# References

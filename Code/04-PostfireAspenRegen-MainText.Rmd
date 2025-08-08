@@ -82,7 +82,7 @@ dir.create(here("Data", "Spatial"), showWarnings = FALSE)
 dir.create(here("Results"), showWarnings = FALSE)
 ```
 
-# Title: Moisture availability drives widespread regeneration of aspen seedlings following the Cameron Peak Fire, northwestern Colorado
+# Title: Limited conifer regeneration, but widespread regeneration of aspen seedlings following the Cameron Peak Fire, northwestern Colorado
 
 ## Authors: Sarah V. Carter^1^ and Sarah J. Hart^1^
 
@@ -124,33 +124,33 @@ In this study, we make use of a large wildfire that burned across multiple fores
 
 ```{r importFieldData}
 # Site data
-site.dat <- read_excel(here("Data", "Postfire-Regen-Clean.xlsx"), sheet="Site", na="NA")
+site.dat <- read.csv(here("Data", "Dryad", "Site.csv"))
 site.dat <- mutate_if(site.dat, is.character, as.factor) # change any character strings to factor
 site.dat$Site <- as.factor(site.dat$Site) # change site no to factor
 
 # Seedling density
-seedlingdensity.dat <- read_excel(here("Data", "Postfire-Regen-Clean.xlsx"), sheet="SeedlingDensity", na="NA")
+seedlingdensity.dat <- read.csv(here("Data", "Dryad", "SeedlingDensity.csv"))
 seedlingdensity.dat <- mutate_if(seedlingdensity.dat, is.character, as.factor) # change any character strings to factor
 seedlingdensity.dat$Site <- as.factor(seedlingdensity.dat$Site)
 seedlingdensity.dat$Conifer <- seedlingdensity.dat %>% dplyr::select(ABLA:PSME) %>% rowSums() # change transect no to factor
 
 # Seedling microsite data
-seedlingmicro.dat <- read_excel(here("Data", "Postfire-Regen-Clean.xlsx"), sheet="SeedlingMicrosite", na="NA") 
+seedlingmicro.dat <- read.csv(here("Data", "Dryad", "SeedlingMicrosite.csv")) 
 seedlingmicro.dat <- mutate_if(seedlingmicro.dat, is.character, as.factor) # change any character strings to factor
 seedlingmicro.dat$Site <- as.factor(seedlingmicro.dat$Site) # change site no to factor
 
 # Site microsite data
-sitemicro.dat <- read_excel(here("Data", "Postfire-Regen-Clean.xlsx"), sheet="SiteMicrosite", na="NA") 
+sitemicro.dat <- read.csv(here("Data", "Dryad", "SiteMicrosite.csv")) 
 sitemicro.dat <- mutate_if(sitemicro.dat, is.character, as.factor) # change any character strings to factor
 sitemicro.dat$Site <- as.factor(sitemicro.dat$Site) # change site no to factor
 
 # Pre-fire overstory data
-overstory <- read_excel(here("Data", "Postfire-Regen-Clean.xlsx"), sheet="PrefireOverstory", na="NA") 
+overstory <- read.csv(here("Data", "Dryad", "PrefireOverstory.csv")) 
 overstory <- mutate_if(overstory, is.character, as.factor) # change any character strings to factor
 overstory$Site <- as.factor(overstory$Site) # change site no to factor
 
 # postfire understory data
-understory <- read_excel(here("Data", "Postfire-Regen-Clean.xlsx"), sheet="Understory", na="NA") 
+understory <- read.csv(here("Data", "Dryad", "Understory.csv"))
 understory <- mutate_if(understory, is.character, as.factor) # change any character strings to factor
 understory$Site <- as.factor(understory$Site) # change site no to factor
 understory$Herb <- understory %>% dplyr::select(Forb, Gram, Shrub) %>% rowSums()
@@ -217,7 +217,7 @@ compiled.microsite.plot <- left_join(compiled.microsite.plot, understory, by="Si
 
 ## Study area
 
-We surveyed aspen seedling regeneration across upper montane and subalpine forests that burned in the Cameron Peak Fire located in northern central Colorado (Fig. \@ref(fig:FigStudyArea)). Over the period from August to December 2020, the fire burned across `r (CameronPeak$BurnBndAc * 0.00404686) %>% round()` square kilometers [@mtbsproject2024MTBSDataAccessa]. Approximately `r round(study.area.CP %>% filter(severity %in% 4) %>% nrow() / nrow(study.area.CP) *100)`% of the fire burned at high severity [@mtbsproject2024MTBSDataAccess], including a wide gradient of elevation ranging from about `r  study.area.CP %>% pull(elevation) %>% min() %>% round()` to `r  study.area.CP %>% pull(elevation) %>% max() %>% round()` meters above sea level. Generally, winters are cold (1991-2020 mean January daily minimum temperature: `r study.area.CP %>% pull(tmin1) %>% mean() %>% round(1)`°C) and summers are hot (1991-2020 mean July daily maximum temperature: `r study.area.CP %>% pull(tmax7) %>% mean() %>% round(1)`°C), but across this elevation gradient there is considerable variation in climate. Mean annual daily temperatures range from `r study.area.CP %>% pull(tmean) %>% min() %>% round(1)` to `r study.area.CP %>% pull(tmean) %>% max() %>% round(1)`°C and total annual precipitation ranges from `r study.area.CP %>% pull(ppt) %>% min() %>% round()` to `r study.area.CP %>% pull(ppt) %>% max() %>% round()` mm (1991-2020 means) [@prismclimategroup2021Monthly30yearClimate].
+We surveyed tree regeneration across upper montane and subalpine forests that burned in the Cameron Peak Fire located in northern central Colorado (Fig. \@ref(fig:FigStudyArea)). Over the period from August to December 2020, the fire burned across `r (CameronPeak$BurnBndAc * 0.00404686) %>% round()` square kilometers [@mtbsproject2024MTBSDataAccessa]. Approximately `r round(study.area.CP %>% filter(severity %in% 4) %>% nrow() / nrow(study.area.CP) *100)`% of the fire burned at high severity [@mtbsproject2024MTBSDataAccess], including a wide gradient of elevation ranging from about `r  study.area.CP %>% pull(elevation) %>% min() %>% round()` to `r  study.area.CP %>% pull(elevation) %>% max() %>% round()` meters above sea level. Generally, winters are cold (1991-2020 mean January daily minimum temperature: `r study.area.CP %>% pull(tmin1) %>% mean() %>% round(1)`°C) and summers are hot (1991-2020 mean July daily maximum temperature: `r study.area.CP %>% pull(tmax7) %>% mean() %>% round(1)`°C), but across this elevation gradient there is considerable variation in climate. Mean annual daily temperatures range from `r study.area.CP %>% pull(tmean) %>% min() %>% round(1)` to `r study.area.CP %>% pull(tmean) %>% max() %>% round(1)`°C and total annual precipitation ranges from `r study.area.CP %>% pull(ppt) %>% min() %>% round()` to `r study.area.CP %>% pull(ppt) %>% max() %>% round()` mm (1991-2020 means) [@prismclimategroup2021Monthly30yearClimate].
 
 ```{r FigStudyArea, fig.id = "FigStudyArea", fig.cap="The study area, study sites (triangles), and the distribution of live and burned aspen. The inset map displays the study area relative to western United States.", fig.height=3, fig.width=4.6, eval=T}
 knitr::include_graphics(here("Maps", "studyarea.jpg"))
@@ -233,7 +233,7 @@ We surveyed `r nrow(site.dat)` sites in the summer of 2022 (Fig. \@ref(fig:FigSt
 
 At each site, we recorded the coordinates, elevation, slope, aspect, and pre-fire tree-species composition. We then established two perpendicular 2 x 50 m transects that intersected at the midpoint [@andrus2021FutureDominanceQuaking]. We tallied the presence of all conifer seedlings, aspen seedlings, and aspen root suckers within each transect and recorded their location along the transect within 2 x 2m subplots. Aspen seedlings were differentiated from root suckers using methods outlined by Kreider et al. [-@kreider2020MethodsDistinguishingAspen], which have been demonstrated to be more than 95% accurate [@kreider2021LowdensityAspenSeedling] and were shown to be effective in our study area [@carter2024OccurrenceDistributionDriving]. Along each transect, we also collected information on percent herbaceous cover in three 1 x 1 m quadrats located every 20 m along each transect.
 
-As a proxy for aspen seed availability, we also recorded the distance from plot center to live aspen trees. Where live aspen were not visible in the field, we estimated the distance to live aspen using a GIS. Specifically. we overlaid the MTBS map of fire severity [@mtbsproject2024MTBSDataAccess] on Cook et al.'s [@cook2024MappingQuakingAspen] map of pre-fire aspen occurrence and assumed that any aspen stem that burned at moderate or high severity was likely killed in the fire. We then calculated the distance from plot center to the nearest live aspen pixel in R [@rcoreteam2024LanguageEnvironmentStatistical] using the *terra* package [@hijmans2022TerraSpatialData].
+As a proxy for aspen seed availability, we also recorded the distance from plot center to live aspen trees. Where live aspen were not visible in the field, we estimated the distance to live aspen using a GIS. Specifically, we overlaid the MTBS map of fire severity [@mtbsproject2024MTBSDataAccess] on Cook et al.'s [@cook2024MappingQuakingAspen] map of pre-fire aspen occurrence and assumed that any aspen stem that burned at moderate or high severity was likely killed in the fire. We then calculated the distance from plot center to the nearest live aspen pixel in R [@rcoreteam2024LanguageEnvironmentStatistical] using the *terra* package [@hijmans2022TerraSpatialData].
 
 To test the hypothesis that microsite conditions influence aspen seedling establishment, we additionally recorded information on proximity to coarse woody debris, substrate conditions, and microtopographic condition for each aspen seedling. We characterized the microtopography as flat, concave, or convex within 2.5 cm of seedling (hereafter ‘small microtopography’) and within 50 cm of seedling (hereafter ‘large microtopography’). We also recorded the presence or absence of small (diameter = 2.5-10 cm) and large (diameter \>10 cm) coarse woody debris (CWD) within 10 cm of seedling. We also collected microsite conditions at 5 meter intervals along each transect to serve as a baseline of the relative abundance each condition across the site.
 

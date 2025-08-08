@@ -1,0 +1,252 @@
+---
+title: "Site selection for: Limited conifer regeneration, but widespread regeneration of aspen seedlings following the Cameron Peak Fire, northwestern Colorado"
+author: "Sarah V. Carter and Sarah J. Hart"
+email: "sarah.hart@colostate.edu"
+output: 
+   officedown::rdocx_document:
+     reference_docx: Template.docx
+bibliography: references.bib
+csl: "`r here::here('citationstyle.csl')`"
+link-citations: true
+urlcolor: blue
+linkcolor: blue
+citationcolor: blue
+---
+
+```{r setup,include=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	progress = FALSE,
+	cache = FALSE,
+	dpi = 300,
+  fig.align = 'center'
+)
+
+set.seed(513)
+options(repos = c(CRAN = "http://cran.rstudio.com"))
+options(timeout=60*60) # timeout downloads that last longer than an hour
+
+### Import libraries
+if (!require("remotes"))  install.packages("remotes")
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(
+  here, # easy file structure
+  rmarkdown, # 
+  flextable, # tables
+  officer, # word documents
+  bookdown, # word documents
+  tidyverse, # data manipulation
+  magrittr, # pipe functions 
+  ggplot2, # figures
+  RColorBrewer, # color palettes
+  patchwork, # combining figures
+  sf, # spatial data
+  terra, # raster data
+  tidyterra, # raster data
+  stars, # raster data
+  tmap, # easy plotting of maps
+  terrainr, # dem
+  DescTools, # degrees to radian
+  prism, # prism data
+  tmaptools, # helper library for tmap
+  grid, # useful for plotting inset map
+  prism, # prism data
+  readxl, # read excel files
+  googledrive
+) 
+
+proj.proj <- 4629
+
+# Set custom plotting theme
+theme_new <- function(base_size = 9,base_family = "Helvetica"){
+  theme_classic(base_size = base_size, base_family = base_family) %+replace%
+    theme(
+      axis.line.x = element_line(color="black", linewidth = 0.25),
+      axis.line.y = element_line(color="black", linewidth = 0.25),
+      axis.title = element_text(size = 9),
+      axis.text = element_text(colour="black", size=8),
+      legend.key=element_rect(colour=NA, fill =NA),
+      panel.grid = element_blank(),   
+      plot.background = element_rect(fill = NA, colour = NA),
+      panel.border = element_rect(fill = NA, colour = NA),
+      panel.background = element_rect(fill = "white", colour = "black"), 
+      strip.background = element_rect(fill = "white"),
+      strip.text = element_text(size = 9)
+      
+    )
+}
+theme_set(theme_new())
+
+set_flextable_defaults(
+  font.family="Times", 
+  font.size=12,
+  line_spacing=1,
+  padding.bottom=1,
+  padding.top=1,
+  text.align='center')
+
+# Set directory structure for project
+dir.create(here("Data", "Spatial"), showWarnings = FALSE)
+dir.create(here("Results"), showWarnings = FALSE)
+dir.create(here("Results", "Figures"), showWarnings = FALSE)
+```
+
+# Objective
+
+The purpose of this code is to identify accessible sites that burned at high severity within the Cameron Peak Fire that were nearby existing patches of aspen.
+
+# Identification of potential study sites
+
+## Select areas of public land that burned in the Cameron Peak fire
+```{r burnedpublic}
+# Read in fire severity data
+severity <-  rast(here('Data', 'Spatial', 'MTBS', 'mtbs_CO_2020.tif'))
+
+# Read in perimeter data
+CameronPeak <- st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp")) %>% 
+  filter(Incid_Name == "CAMERON PEAK") %>% # pull out just Cameron Peak
+  st_transform(st_crs(severity)) %>% 
+st_write(here("Data", "Spatial" ,"MTBS", "mtbs_perims_DD-CameronPeak.shp"), append=F)
+
+CameronPeak.severity <- crop(severity, CameronPeak) 
+CameronPeak.severity <- mask(CameronPeak.severity, CameronPeak)
+CameronPeak.severity[!CameronPeak.severity ==4] <- NA
+
+CameronPeak.severity <- as.polygons(CameronPeak.severity, aggregate=T, values=T) 
+CameronPeak.severity <- CameronPeak.severity %>% 
+  st_as_sf() %>% 
+  st_union()
+
+
+comap <- st_read(here("Data", "Spatial", "CoMaP", "COMaP_v20190306.gdb")) %>%
+  filter(PUBLIC_ACCESS=="Yes") %>% 
+  st_transform(st_crs(severity))  
+
+burned.public <- st_intersection(comap, CameronPeak.severity) %>% 
+  st_union() 
+```
+
+## Select roads that are easy enough to drive
+```{r roads}
+select.usfs.roads <- st_read(here("Data", "Spatial", "Roads", "S_USA.Road_MVUM.shp")) %>% 
+  filter(OPERATIONA %in% c("5 - HIGH DEGREE OF USER COMFORT", "4 - MODERATE DEGREE OF USER COMFORT", "3 - SUITABLE FOR PASSENGER CARS"))  %>%
+  st_transform(st_crs(CameronPeak)) %>% # change projection
+  st_crop(st_bbox(CameronPeak)) %>% # crop to study area
+  st_union() 
+
+hwys <- st_read(here("Data", "Spatial", "Roads", "SHP", "STATEWIDE", "Highways.shp")) %>% 
+  st_as_sf() %>% 
+  st_zm() %>%
+  st_transform(st_crs(CameronPeak)) %>% 
+  st_crop(st_bbox(CameronPeak)) %>%  # crop to study area
+  st_union()
+
+local <- st_read(here("Data", "Spatial", "Roads", "SHP", "STATEWIDE","local_roads.shp")) %>%
+  st_zm() %>%
+  st_transform(crs=st_crs(CameronPeak))  %>% 
+  st_crop(st_bbox(CameronPeak)) %>%  # crop to study area
+  st_union()
+
+major <- st_read(here("Data", "Spatial", "Roads", "SHP", "STATEWIDE", "Major_Roads.shp")) %>%
+  st_zm() %>% 
+  st_transform(crs=st_crs(CameronPeak)) %>% 
+  st_crop(st_bbox(CameronPeak)) %>%  # crop to study area
+  st_union()
+```
+
+## Select trails that intersect the fire
+```{r trails}
+trails <- st_read(here("Data", "Spatial", "Trails", "S_USA.TrailNFS_Publish.gdb")) %>%
+  st_transform(st_crs(CameronPeak)) %>% 
+  st_crop(st_bbox(CameronPeak)) 
+```
+
+## Select areas are within 1000 m from a road
+```{r roadbuffer1000}
+sf_use_s2(FALSE) # turn off spherical geometry
+
+hwys1000 <- hwys %>% st_buffer(dist=1000)
+major1000 <- major %>% st_buffer(dist=1000)
+local1000 <- local %>% st_buffer(dist=1000)
+select.usfs.roads1000 <- select.usfs.roads %>% st_buffer(dist=1000)
+roadz1000 <- st_union(hwys1000, major1000) %>% st_union(local1000) %>% st_union(select.usfs.roads1000)
+
+```
+
+## Select areas of severely burned public land that are 500 m away from a trail and no more than 1 km up the trail or are within 250 m of a road
+```{r roadbuffer500}
+hwys500 <- hwys %>% st_buffer(dist=500)
+major500 <- major %>% st_buffer(dist=500)
+local500 <- local %>% st_buffer(dist=500)
+select.usfs.roads500 <- select.usfs.roads %>% st_buffer(dist=500)
+roadz500 <- st_union(hwys500, major500) %>% st_union(local500) %>% st_union(select.usfs.roads500)
+
+# identify trails that are within 30 m of a road
+hwys30 <- hwys %>% st_buffer(dist=30)
+major30 <- major %>% st_buffer(dist=30)
+local30 <- local %>% st_buffer(dist=30)
+select.usfs.roads30 <- select.usfs.roads %>% st_buffer(dist=30)
+roadz30 <- st_union(hwys30, major30) %>% st_union(local30) %>% st_union(select.usfs.roads30)
+trail.id <- st_intersects(roadz30, trails)
+trailz <- trails[trail.id[[1]],]
+ 
+trailz <- trailz %>% st_buffer(dist=500) # buffer by 500 m
+trailz2 <- st_intersection(trailz, roadz1000) # select part of trail within 1 km of a road
+
+## identify area within 250 m of a road
+hwys250 <- hwys %>% st_buffer(dist=250)
+major250 <- major %>% st_buffer(dist=250)
+local250 <- local %>% st_buffer(dist=250)
+select.usfs.roads250 <- select.usfs.roads %>% st_buffer(dist=250)
+roadz250 <- st_union(hwys250, major250) %>% st_union(local250) %>% st_union(select.usfs.roads250)
+
+accessible <- st_union(trailz2, roadz250)
+burned.public.accessible <- st_intersection(accessible, burned.public)  %>% st_union() 
+```
+
+## Exclude areas that are within 50 m of a road
+```{r roadbuffer50}
+hwys50 <- hwys %>% st_buffer(dist=50)
+major50 <- major %>% st_buffer(dist=50)
+local50 <- local %>% st_buffer(dist=50)
+select.usfs.roads50 <- select.usfs.roads %>% st_buffer(dist=50)
+roadz50 <- st_union(hwys50, major50) %>% st_union(local50) %>% st_union(select.usfs.roads50)
+
+burned.public.accessible <- burned.public.accessible %>% st_difference(roadz50)
+```
+
+## Identify areas >100 m and <1000 m away from pre-fire aspen patch
+```{r aspendist}
+aspen <- rast(here("Data", "Spatial", "Aspen", "srme_skcv_distribution_binopt.tif"))
+aspen[aspen==0] <- NA
+CameronPeak.1000 <- CameronPeak %>% st_buffer(1000) %>% 
+  st_transform(st_crs(aspen))
+
+aspen <- aspen %>% 
+  crop(CameronPeak.1000) %>% 
+  mask(CameronPeak.1000)
+
+aspen.p <-  aspen %>% as.polygons(aggregate=T, values=T) %>% 
+  st_as_sf() %>% 
+  st_union()
+
+aspen.p.100 <- aspen.p %>% 
+  st_buffer(dist=100) %>%
+  st_union()
+
+aspen.p.1000 <- aspen.p.100 %>% 
+  st_buffer(dist=900) %>%
+  st_union()
+
+aspen.p.100.1000 <- st_difference(aspen.p.1000, aspen.p.100) %>% st_union()
+
+
+burned.public.accessible.re <- st_transform(burned.public.accessible,  st_crs(aspen.p.100.1000)) 
+
+burned.public.accessible.aspen <-st_intersection(burned.public.accessible.re, aspen.p.100.1000) %>% 
+  st_write(here("Data", "Spatial", "studyarea.shp"), append=F)
+```
+
+
+
