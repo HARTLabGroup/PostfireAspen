@@ -104,6 +104,8 @@ Two years following fire, we found widespread but highly variable establishment 
 
 ## Conclusions
 
+Increased fire frequency, severity, and extent in western North America may exceed the capacity of some formerly conifer-dominant forests to maintain historical distributions, while conditions following high severity burns may allow establishment of aspen seedlings both within and outside of pre-fire aspen populations.
+
 # Keywords
 
 aspen, postfire tree regeneration, seedling, *Populus tremuliodes,* sexual establishment
@@ -192,7 +194,7 @@ understory <- understory %>% group_by(Site) %>% summarise(Forb=mean(Forb), Shrub
 ```
 
 ```{r summarizeHeight}
-seedlingheight.dat <- seedlingmicro.dat %>% group_by(Cluster, Site, Subplot)
+seedlingheight.dat <- seedlingmicro.dat %>% group_by(Site, Subplot)
 ```
 
 ```{r categorizeCWD}
@@ -241,7 +243,7 @@ To test the hypothesis that microsite conditions influence aspen seedling establ
 
 ### Patterns of postfire regeneration
 
-We characterized patterns of post-fire conifer and aspen seedling regeration using basic summary statistics, including the proportion of plots with seedlings and the mean, median, minimum, and maximum seedling densities in plots with seedlings. Summary statistics were calculated for each individual species and pooled for all conifer seedlings. To understand how pre-fire forest composition affects initial species composition, we also quantified the number of plots where each species was present pre- and postfire.
+We characterized patterns of post-fire conifer and aspen seedling regeneration using basic summary statistics, including the proportion of plots with seedlings and the mean, median, minimum, and maximum seedling densities in plots with seedlings. Summary statistics were calculated for each individual species and pooled for all conifer seedlings. To understand how pre-fire forest composition affects initial species composition, we also quantified the number of plots where each species was present pre- and postfire.
 
 ```{r comp}
 # calculate the number of sites with seedlings present by species
@@ -631,7 +633,7 @@ At the microsite scale, seedling occurrence was related to the bryophyte cover, 
 
 # Conclusions
 
-Increased fire frequency, severity, and extent in western North America may exceed the capacity of some formerly conifer-dominant forests to maintain historical distributions [@coop2020WildfireDrivenForestConversion], while conditions following high severity burns may allow establishment of aspen seedlings both within and outside of pre-fire aspen populations [@kreider2021LowdensityAspenSeedling; @nigro2022WildfireCatalyzesUpward]. We observed this phenomenon in high severity zones of the Cameron Peak Fire, particularly in areas where topographic heterogenity and post-fire legacies result in increased moisture availability. Concurrent with aspen seedling regeneration, we found low overall regeneration of conifer species relative to aspen. Across our system limited conifer regeneration likely results from warm and dry weather and pre-fire outbreaks of bark beetles that caused extensive tree mortality - conditions that are expected to become more common with climate change [@bentz2010ClimateChangeBark; @ipcc2021ClimateChange2021]. These trends coupled with changing fire regimes and our observations, along with a growing body of research on aspen seedling regeneration in the West [e.g., @gill2017PopulusTremuloidesSeedling; @kreider2021LowdensityAspenSeedling; @andrus2021FutureDominanceQuaking; @nigro2022WildfireCatalyzesUpward], suggest that aspen may increasing shape post-fire ecology across the West.
+Increased fire frequency, severity, and extent in western North America may exceed the capacity of some formerly conifer-dominant forests to maintain historical distributions [@coop2020WildfireDrivenForestConversion], while conditions following high severity burns may allow establishment of aspen seedlings both within and outside of pre-fire aspen populations [@kreider2021LowdensityAspenSeedling; @nigro2022WildfireCatalyzesUpward]. We observed this phenomenon in high severity zones of the Cameron Peak Fire, particularly in areas where topographic heterogenity and post-fire legacies resulted in increased moisture availability. Concurrent with aspen seedling regeneration, we found low overall regeneration of conifer species relative to aspen. Across our system, limited conifer regeneration likely results from warm and dry weather and pre-fire outbreaks of bark beetles that caused extensive tree mortality - conditions that are expected to become more common with climate change [@bentz2010ClimateChangeBark; @ipcc2021ClimateChange2021]. These trends coupled with changing fire regimes and our observations, along with a growing body of research on aspen seedling regeneration in the West [e.g., @gill2017PopulusTremuloidesSeedling; @kreider2021LowdensityAspenSeedling; @andrus2021FutureDominanceQuaking; @nigro2022WildfireCatalyzesUpward], suggest that aspen may increasing shape post-fire ecology across the West.
 
 # **List of abbreviations**
 
@@ -657,13 +659,15 @@ The authors declare that they have no competing interests.
 
 ## Funding
 
+This work was supported by the Joint Fire Science Program (JFSP, Project ID 21-2-02-29).
+
 ## Authors' contributions
 
 **SVC**: conceptualization (equal); methodology (equal); data collection (lead); methods (supporting); writing - original draft (equal), writing - review and editing (equal); **SJH**: conceptualization (equal); methodology (equal); data collection (supporting); methods (lead); writing - original draft (equal), writing - review and editing (equal). All authors read and approved the final manuscript.
 
 ## Acknowledgements
 
-We would like to thank Chuck Rhoades and Monique Rocca for feedback on earlier draft of this wok. Additionally, we would like to thank Colorado State University for supporting SVC.
+We would like to thank Chuck Rhoades and Monique Rocca for feedback on earlier draft of this work. We thank Preston Young and Samantha Maldonado for help in the field. Additionally, we would like to thank Colorado State University for supporting SVC.
 
 # References
 

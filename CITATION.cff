@@ -1,0 +1,13 @@
+cff-version: 1.1.0
+message: "If you use this code, please cite it as below."
+authors:
+- family-names: "Carter"
+  given-names: "Sarah V."
+- family-names: "Hart"
+  given-names: "Sarah J."
+  orcid: "https://orcid.org/0000-0001-8371-8568"
+title: "Code from: Limited conifer regeneration, but widespread regeneration of aspen seedlings following the Cameron Peak Fire, northwestern Colorado"
+version: v1.0.0-alpha
+date-released: 2025-08-08
+doi: 
+url: 

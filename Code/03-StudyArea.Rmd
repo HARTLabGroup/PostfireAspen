@@ -180,7 +180,7 @@ CameronPeak.sample.pts <- extract(bb.presence, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(bb.severity, CameronPeak.sample.pts, bind=T)
   
 CameronPeak.sample.df <- CameronPeak.sample.pts %>% as.data.frame()
-colnames(CameronPeak.sample.df) <- c("severity","seedsource.dist", "aspen", "distance.pre", "distance.post", "distance.high", "elevation", "ppt", "ppt.111212345", "ppt.678910", "tmean", "tmin1", "tmax7", "tmax.678910", "ppt.2021", "ppt.111212345.2021", "ppt.678910.2021", "tmax.678910.2021", "ppt.2022", "ppt.111212345.2022", "ppt.678910.2022", "tmax.678910.2022",  "bb.presence", "bb.severity")
+colnames(CameronPeak.sample.df) <- c("severity", "aspen", "seedsource.dist","distance.pre", "distance.post", "distance.high", "elevation", "ppt", "ppt.111212345", "ppt.678910", "tmean", "tmin1", "tmax7", "tmax.678910", "ppt.2021", "ppt.111212345.2021", "ppt.678910.2021", "tmax.678910.2021", "ppt.2022", "ppt.111212345.2022", "ppt.678910.2022", "tmax.678910.2022",  "bb.presence", "bb.severity")
 write.csv(CameronPeak.sample.df, here("Results", "CameronPeak-attributes.csv"))
 
 ## Study sites
@@ -216,7 +216,7 @@ sites.sf <- extract(bb.presence, sites.sf, bind=T)
 sites.sf <- extract(bb.severity, sites.sf, bind=T)
   
 sites.df <- sites.sf %>% as.data.frame()
-colnames(sites.df) <- c("Site", "Aspect", "Slope","severity", "seedsource.dist", "aspen", "distance.pre", "distance.post", "distance.high", "elevation", "ppt", "ppt.111212345", "ppt.678910", "tmean", "tmin1", "tmax7", "tmax.678910", "ppt.2021", "ppt.111212345.2021", "ppt.678910.2021", "tmax.678910.2021", "ppt.2022", "ppt.111212345.2022", "ppt.678910.2022", "tmax.678910.2022",  "bb.presence", "bb.severity")
+colnames(sites.df) <- c("Site", "Aspect", "Slope","severity",  "aspen", "seedsource.dist","distance.pre", "distance.post", "distance.high", "elevation", "ppt", "ppt.111212345", "ppt.678910", "tmean", "tmin1", "tmax7", "tmax.678910", "ppt.2021", "ppt.111212345.2021", "ppt.678910.2021", "tmax.678910.2021", "ppt.2022", "ppt.111212345.2022", "ppt.678910.2022", "tmax.678910.2022",  "bb.presence", "bb.severity")
 
 # Calc folded aspect
 sites.df$Longitude <- sites %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") %>% st_transform(crs="epsg:4326") %>% st_coordinates() %>% as.data.frame() %>% st_drop_geometry() %>% pull(X)

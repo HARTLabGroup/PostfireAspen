@@ -104,7 +104,8 @@ The purpose of this code is to identify accessible sites that burned at high sev
 severity <-  rast(here('Data', 'Spatial', 'MTBS', 'mtbs_CO_2020.tif'))
 
 # Read in perimeter data
-CameronPeak <- st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp")) %>% 
+CameronPeak <- st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp"))
+%>% 
   filter(Incid_Name == "CAMERON PEAK") %>% # pull out just Cameron Peak
   st_transform(st_crs(severity)) %>% 
 st_write(here("Data", "Spatial" ,"MTBS", "mtbs_perims_DD-CameronPeak.shp"), append=F)
