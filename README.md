@@ -1,5 +1,5 @@
 ---
-title: "README file"
+title: "Code for: Limited conifer regeneration, but widespread regeneration of aspen seedlings following the Cameron Peak Fire, northwestern Colorado"
 author: "Author"
 contact: "Email"
 date: "date"
