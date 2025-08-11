@@ -92,7 +92,7 @@ dir.create(here("Results"), showWarnings = FALSE)
 
 Corresponding author: Sarah J. Hart (email: sarah.hart\@colostate.edu)
 
-# Abstract [350 words]
+# Abstract
 
 ## Background
 

@@ -50,5 +50,8 @@ Maps/
 # Backups
 BAK/
 
+# Dryad data
+Data/Dryad
+
 # Documents
 Documents/
