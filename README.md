@@ -14,7 +14,7 @@ The project has the following structure:
 
 -   citationstyle.csl : A [Citation Style Language](https://citationstyles.org/) file used to format references in the main text file.
 
--   Code: This subdirectory contains all code written for this project. In order for the code to work, files should be run sequentially (i.e., *01-SpatialData.Rmd* then *02-SiteSelection ... 04-PostfireAspenRegen-MainText.Rmd).* All .R scripts are called internally by .Rmd files. For all R markdown files (.Rmd), the knit version is also included as a Microsoft Word document.
+-   Code: This subdirectory contains all code written for this project. In order for the code to work, the associated data (forthcoming on Dryad - <https://doi.org/10.5061/dryad.x3ffbg7zx>) should be stored in a subdirectory called `Data/Dryad`. The files should be run sequentially (i.e., *01-SpatialData.Rmd* then *02-SiteSelection ... 04-PostfireAspenRegen-MainText.Rmd).* For all R markdown files (.Rmd), the knit version is also included as a Microsoft Word document.
 
     -   *01-SpatialData.Rmd* : This code will download most of the data.
 
