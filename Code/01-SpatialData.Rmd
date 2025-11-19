@@ -234,6 +234,19 @@ if(!file.exists(temp)){
 }
 ```
 
+We also downloaded 30 m rasters of existing vegetation type in ca. 2016 from LANDFIRE [@landfire2016ExistingVegetationType]
+
+```{r DL_EVT}
+## Download EVT (if not already downloaded)
+if(!dir.exists( here("Data", "Spatial",  "LANDFIRE", "LF2016_EVT_200_CONUS"))){
+  dir.create(here("Data", "Spatial", "LANDFIRE"))
+  temp <- here("Data", "Spatial", "LANDFIRE", "LF2016_EVT_200_CONUS.zip")
+  download.file("https://www.landfire.gov/data-downloads/US_200/LF2016_EVT_200_CONUS.zip", temp, mode="wb")
+  unzip(temp, exdir=here("Data", "Spatial", "LANDFIRE"))
+  file.remove(temp)
+}
+```
+
 ## Disturbance data
 
 We acquired polygon data describing the extent and severity of the Cameron Peak fire from the Monitoring Trends in Burn Severity Project [@mtbsproject2024MTBSDataAccess; @mtbsproject2024MTBSDataAccessa] ([mtbs.gov](mtbs.gov)).
@@ -260,12 +273,12 @@ if(!file.exists(temp)){
 }
 ```
 
-We also obtained 30 m maps of the severity (i.e., cumulative percent basal area mortality) of recent (1997–2019) bark beetle-caused tree mortality from Rodman et al. [-@rodman2021DataEffectsBark]. Briefly this dataset was produced using Landsat time series data in combination with an extensive field data [@rodman2021EffectsBarkBeetle]. This dataset can be downloaded from Dryad at https://datadryad.org/dataset/doi:10.5061/dryad.1rn8pk0sn.  In our analyses, we downloaded the full dataset and unzipped it within the project subdirectory `~Data/Spatial`.
-
+We also obtained 30 m maps of the severity (i.e., cumulative percent basal area mortality) of recent (1997–2019) bark beetle-caused tree mortality from Rodman et al. [-@rodman2021DataEffectsBark]. Briefly this dataset was produced using Landsat time series data in combination with an extensive field data [@rodman2021EffectsBarkBeetle]. This dataset can be downloaded from Dryad at <https://datadryad.org/dataset/doi:10.5061/dryad.1rn8pk0sn>. In our analyses, we downloaded the full dataset and unzipped it within the project subdirectory `~Data/Spatial`.
 
 ## Preprocessing of geospatial data
 
 To characterize the distribution of live and fire-killed mature aspen, we overlaid the MTBS map of fire severity [@mtbsproject2024MTBSDataAccess] on Cook et al.'s [@cook2024MappingQuakingAspen] map of pre-fire aspen occurrence. We assumed that any aspen stem that burned at moderate or high severity was likely killed in the fire.
+
 ```{r LiveDeadAspen}
 dir.create(here("Data", "Spatial", "Processed"))
 if(!file.exists(here("Data", "Spatial", "Aspen", "Aspen-dead-highmod.tif"))){
@@ -323,14 +336,8 @@ if(!file.exists(here("Data", "Spatial", "Aspen", "Aspen-dead-highmod.tif"))){
 }
 ```
 
-We then calculated the distance from plot center to the nearest live aspen pixel in R [@rcoreteam2024LanguageEnvironmentStatistical] using the terra package [@hijmans2022TerraSpatialData].
-```{r dist2aspen}
-  # Calculate distance to aspen
-  aspen.distance <- distance(aspen.r, filename=here("Data", "Spatial", "Processed", "aspen-dist.tif"), overwrite=T)
-  aspen.live.highmod.distance <- distance(aspen.live.highmod.r, filename=here("Data", "Spatial","Processed", "aspen-live-highmod-dist.tif"), overwrite=T)
-```
+We then calculated the distance from plot center to the nearest live aspen pixel in R [@rcoreteam2024LanguageEnvironmentStatistical] using the *terra* package [@hijmans2022TerraSpatialData].
 
-We then calculated the distance from plot center to the nearest live aspen pixel in R [@rcoreteam2024LanguageEnvironmentStatistical] using the terra package [@hijmans2022TerraSpatialData].
 ```{r dist2lowseverity}
 if(!file.exists(here("Data", "Spatial", "Processed", "CameronPeak.severitylow-dist.tif"))){
   # Read in fire severity data

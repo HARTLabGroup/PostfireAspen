@@ -134,6 +134,10 @@ aspen.live <- rast(here("Data", "Spatial", "Aspen", "Aspen-live-highmod.tif"))
 aspen.live.distance <- rast(here("Data", "Spatial","Processed", "aspen-live-highmod-dist.tif"))
 aspen.prefire.distance <- rast(here("Data", "Spatial", "Processed", "aspen-dist.tif"))
 
+# Read in existing veg (ca. 2016)
+  EVT.2016 <- rast(here("Data", "Spatial", "LANDFIRE", "LF2016_EVT_200_CONUS", "Tif", "LC16_EVT_200.tif"))
+  activeCat(EVT.2016) <- "EVT_PHYS"
+ 
 # Read in fire severity data
 severity <-  rast(here('Data', 'Spatial', 'MTBS', 'mtbs_CO_2020.tif')) 
 CameronPeak <-  st_read(here("Data", "Spatial", "MTBS", "mtbs_perims_DD.shp"))  %>% 
@@ -146,17 +150,17 @@ CameronPeak.severity[CameronPeak.severity >=5] <-NA
 CameronPeak.severitylow.distance <- rast(here("Data", "Spatial", "Processed", "CameronPeak.severitylow-dist.tif"))
 
 # Read in bark beetle data
-bb.presence <- rast(here("Data", "Spatial", "Dryad", "Rodman", "Rodman et al. RS_DataArchive", "Data", "SpatialData", "BBPresence_finalMasked.tif"))
-bb.severity <- rast(here("Data", "Spatial", "Dryad", "Rodman", "Rodman et al. RS_DataArchive", "Data", "SpatialData", "BBSeverity_finalMasked.tif"))
+bb.presence <- rast(here("Data", "Spatial","Rodman et al. RS_DataArchive", "Data", "SpatialData", "BBPresence_finalMasked.tif"))
+bb.severity <- rast(here("Data", "Spatial", "Rodman et al. RS_DataArchive", "Data", "SpatialData", "BBSeverity_finalMasked.tif"))
 
 # Sample and characterize patterns
 ## Cameron Peak 
 CameronPeak.sample.pts <- spatSample(CameronPeak.severity, 10000, method="random", replace=FALSE, na.rm=T, as.points=TRUE, values=TRUE, cells=FALSE) 
 CameronPeak.sample.pts <- extract(aspen, CameronPeak.sample.pts, bind=T)
-CameronPeak.sample.pts <- extract(CameronPeak.severitylow.distance, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(aspen.prefire.distance, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(aspen.live.distance, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(CameronPeak.severitylow.distance, CameronPeak.sample.pts, bind=T)
+CameronPeak.sample.pts <- extract(EVT.2016, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(dem, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(ppt.normal, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(ppt.normal.111212345, CameronPeak.sample.pts, bind=T)
@@ -180,7 +184,7 @@ CameronPeak.sample.pts <- extract(bb.presence, CameronPeak.sample.pts, bind=T)
 CameronPeak.sample.pts <- extract(bb.severity, CameronPeak.sample.pts, bind=T)
   
 CameronPeak.sample.df <- CameronPeak.sample.pts %>% as.data.frame()
-colnames(CameronPeak.sample.df) <- c("severity", "aspen", "seedsource.dist","distance.pre", "distance.post", "distance.high", "elevation", "ppt", "ppt.111212345", "ppt.678910", "tmean", "tmin1", "tmax7", "tmax.678910", "ppt.2021", "ppt.111212345.2021", "ppt.678910.2021", "tmax.678910.2021", "ppt.2022", "ppt.111212345.2022", "ppt.678910.2022", "tmax.678910.2022",  "bb.presence", "bb.severity")
+colnames(CameronPeak.sample.df) <- c("severity", "aspen", "distance.pre", "distance.post", "distance.high", "EVT", "elevation", "ppt", "ppt.111212345", "ppt.678910", "tmean", "tmin1", "tmax7", "tmax.678910", "ppt.2021", "ppt.111212345.2021", "ppt.678910.2021", "tmax.678910.2021", "ppt.2022", "ppt.111212345.2022", "ppt.678910.2022", "tmax.678910.2022",  "bb.presence", "bb.severity")
 write.csv(CameronPeak.sample.df, here("Results", "CameronPeak-attributes.csv"))
 
 ## Study sites
@@ -188,7 +192,6 @@ sites <- read.csv(here("Data", "Dryad", "Site.csv")) %>%
   dplyr::select("Site", "Easting", "Northing", "Aspect", "Slope") 
 sites.sf <- sites %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") 
 sites.sf <- extract(CameronPeak.severity, sites.sf, bind=T)
-sites.sf <- extract(CameronPeak.severitylow.distance, sites.sf, bind=T)
 sites.sf <- extract(aspen, sites.sf, bind=T)
 sites.sf <- extract(aspen.prefire.distance, sites.sf, bind=T)
 sites.sf <- extract(aspen.live.distance, sites.sf, bind=T)
@@ -215,16 +218,18 @@ sites.sf <- extract(tmax.2022.678910, sites.sf, bind=T)
 sites.sf <- extract(bb.presence, sites.sf, bind=T)
 sites.sf <- extract(bb.severity, sites.sf, bind=T)
   
-sites.df <- sites.sf %>% as.data.frame()
-colnames(sites.df) <- c("Site", "Aspect", "Slope","severity",  "aspen", "seedsource.dist","distance.pre", "distance.post", "distance.high", "elevation", "ppt", "ppt.111212345", "ppt.678910", "tmean", "tmin1", "tmax7", "tmax.678910", "ppt.2021", "ppt.111212345.2021", "ppt.678910.2021", "tmax.678910.2021", "ppt.2022", "ppt.111212345.2022", "ppt.678910.2022", "tmax.678910.2022",  "bb.presence", "bb.severity")
+
+names(sites.sf) <- c("Site", "Aspect", "Slope","severity",  "aspen", "distance.pre", "distance.post", "distance.high", "elevation", "ppt", "ppt.111212345", "ppt.678910", "tmean", "tmin1", "tmax7", "tmax.678910", "ppt.2021", "ppt.111212345.2021", "ppt.678910.2021", "tmax.678910.2021", "ppt.2022", "ppt.111212345.2022", "ppt.678910.2022", "tmax.678910.2022",  "bb.presence", "bb.severity")
 
 # Calc folded aspect
-sites.df$Longitude <- sites %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") %>% st_transform(crs="epsg:4326") %>% st_coordinates() %>% as.data.frame() %>% st_drop_geometry() %>% pull(X)
-sites.df$Latitude <- sites  %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") %>% st_transform(crs="epsg:4326") %>% st_coordinates() %>% as.data.frame() %>% st_drop_geometry()  %>% pull(Y)
-sites.df$FoldedAspect <- abs( 180 - abs(sites.df$Aspect-225))
-sites.df$PotentialDirRad <- -1.467+1.582*cos(DegToRad(sites.df$Latitude))*cos(DegToRad(sites.df$Slope))-1.5*cos(sites.df$FoldedAspect)* sin(DegToRad(sites.df$Slope))*sin(DegToRad(sites.df$Latitude))-0.262*sin(DegToRad(sites.df$Latitude))*sin(DegToRad(sites.df$Slope))+0.607* sin(sites.df$FoldedAspect)*sin(DegToRad(sites.df$Slope))
-sites.df$HeatLoad <- exp(sites.df$PotentialDirRad )
+sites.sf$Longitude <- sites %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") %>% st_transform(crs="epsg:4326") %>% st_coordinates() %>% as.data.frame() %>% st_drop_geometry() %>% pull(X)
+sites.sf$Latitude <- sites  %>%  st_as_sf(coords = c("Easting", "Northing"), crs = "EPSG:32613") %>% st_transform(crs="epsg:4326") %>% st_coordinates() %>% as.data.frame() %>% st_drop_geometry()  %>% pull(Y)
+sites.sf$FoldedAspect <- abs( 180 - abs(sites.sf$Aspect-225))
+sites.sf$PotentialDirRad <- -1.467+1.582*cos(DegToRad(sites.sf$Latitude))*cos(DegToRad(sites.sf$Slope))-1.5*cos(sites.sf$FoldedAspect)* sin(DegToRad(sites.sf$Slope))*sin(DegToRad(sites.sf$Latitude))-0.262*sin(DegToRad(sites.sf$Latitude))*sin(DegToRad(sites.sf$Slope))+0.607* sin(sites.sf$FoldedAspect)*sin(DegToRad(sites.sf$Slope))
+sites.sf$HeatLoad <- exp(sites.sf$PotentialDirRad )
 
+sites.sf %>% st_as_sf() %>% st_write(here("Data", "Spatial", "sites-attributes.gpkg"), append=F)
+sites.df <- sites.sf %>% as.data.frame()
 write.csv(sites.df, here("Results", "sites-attributes.csv"), row.names=F)
 ```
 
