@@ -42,6 +42,12 @@ The project has the following structure:
 
 This project is licensed under the Creative Commons Attribution 4.0 International - see the LICENSE.md file for details
 
+## Related works
+
+Carter, S. V., and S. J. Hart. Forthcoming on Dryad. Data from: Limited conifer regeneration, but widespread regeneration of aspen seedlings following the Cameron Peak Fire, northwestern Colorado. Dryad. doi:10.5061/dryad.x3ffbg7zx.
+
+Carter, S. V., and S. J. Hart. In review. Limited conifer regeneration, but widespread regeneration of aspen seedlings following the Cameron Peak Fire, northwestern Colorado.
+
 ## Citation
 
 Please cite this work following the Citation.cff file
